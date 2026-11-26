@@ -66,9 +66,11 @@ Dans la version 1.1.1, le message HTTP 503 indique que Home Assistant a joint la
 
 À partir de la version 1.2.0, ouvrez **Outils de développement → États**, puis cherchez `alarm_control_panel.alarme_t9000`. L’attribut `homebase_online` indique si la passerelle a une liaison avec la base. Lorsqu’elle est hors ligne, `connection_issue` peut indiquer la dernière cause connue. Vous pouvez lire ces attributs sans actionner l’alarme. En cas d’échec, le journal du module peut aussi afficher le motif de la commande.
 
-- `no_lan_candidate` ou `ice_unavailable` indique un problème lors de l’établissement de la liaison locale. Sous VMware, vérifiez que la carte réseau de la VM est en mode pont sur le réseau de la **HomeBase**.
+- `no_lan_candidate` indique que le connecteur n’a reçu aucune proposition de liaison directe de la base. Avec `ice_unavailable`, il en a reçu une, mais la négociation a expiré avant de trouver un chemin utilisable. Dans les deux cas, la commande d’alarme n’a pas été envoyée.
 - `signaling_unavailable` indique que le connecteur n’a pas pu joindre la signalisation eufy nécessaire à l’ouverture d’une nouvelle liaison. Vérifiez l’accès Internet de la VM.
 - `command_unconfirmed` indique que la passerelle a perdu la confirmation. Consultez l’état de la base avant de décider d’envoyer une autre commande.
+
+Le module 1.2.1 corrige la perte d’un candidat de connexion reçu avant l’initialisation du transport. Si `ice_unavailable` persiste sous VMware, relevez l’IPv4 de la **HomeBase** dans les baux DHCP de votre routeur. Vérifiez que le pont de la VM utilise la carte physique reliée à ce réseau. Depuis la console VMware, à l’invite `ha >`, saisissez `network info` pour lire l’IPv4 et le préfixe de l’interface active. [Configuration VMware de Home Assistant OS](https://www.home-assistant.io/installation/windows/)
 
 ## Session et redémarrage
 

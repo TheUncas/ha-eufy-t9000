@@ -33,9 +33,11 @@ RTC_CONNECTION_ERRORS = {
     "hub_unreachable": "La HomeBase n’a pas répondu à la demande de liaison. Vérifiez qu’elle est en ligne dans eufy Security.",
     "offer_unavailable": "La négociation de la liaison a expiré après la réponse de la HomeBase. Vérifiez sa connexion réseau.",
     "answer_unavailable": "L’échange des paramètres de connexion avec la HomeBase a échoué. Vérifiez la connexion réseau de la base et du module.",
-    "ice_unavailable": "Le chemin réseau local vers la HomeBase est indisponible. Vérifiez que le module peut la joindre sur le LAN.",
+    "ice_unavailable": "Le connecteur n’a pas trouvé de paire ICE utilisable à la fin de la tentative.",
+    "ice_path_lost": "Une liaison ICE était disponible pendant la tentative, puis elle a été perdue.",
     "no_lan_candidate": "La HomeBase n’a proposé aucune adresse locale. Vérifiez que le module et la base peuvent communiquer sur le LAN.",
     "secure_channel_unavailable": "Le canal sécurisé avec la HomeBase n’a pas pu s’ouvrir. Vérifiez la connectivité entre la base et le module.",
+    "command_channel_unavailable": "La connexion au pair a abouti, puis le délai a expiré avant l’ouverture du canal de commande.",
 }
 _BEFORE_SEND_ERRORS = {
     **RTC_CONNECTION_ERRORS,

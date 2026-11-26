@@ -7,12 +7,26 @@ import { setTimeout as delay } from 'node:timers/promises';
 const bad = (status, message, reason) => Object.assign(new Error(message), { status, statusCode: status, reason });
 const identity = new Set(['name', 'model', 'hardwareVersion', 'softwareVersion', 'type']);
 const rtcFailures = new Set(['sign_unauthorized', 'sign_refused', 'rtc_auth', 'peer_unavailable', 'region_unavailable',
-  'signaling_unavailable', 'hub_unreachable', 'offer_unavailable', 'answer_unavailable', 'ice_unavailable', 'no_lan_candidate', 'secure_channel_unavailable']);
+  'signaling_unavailable', 'hub_unreachable', 'offer_unavailable', 'answer_unavailable', 'ice_unavailable',
+  'ice_path_lost', 'no_lan_candidate', 'secure_channel_unavailable', 'command_channel_unavailable']);
+const iceStates = new Set(['new', 'checking', 'connected', 'completed', 'disconnected', 'failed', 'closed', 'unknown']);
+const iceFlags = ['iceConnected', 'pairSeen', 'localUdpAnnounced', 'remoteUdpSubmitted'];
 const activeModes = new Set([0, 1, 3, 4, 5, 6, 63]);
 const alarmFailures = new Set([...rtcFailures, 'connector_unavailable', 'homebase_unavailable', 'homebase_unreachable',
   'command_unconfirmed']);
 export function publicAlarmFailureReason(reason) {
   return alarmFailures.has(reason) ? reason : undefined;
+}
+
+function recordConnectionFailure(station, reason, attempt) {
+  delete station.connectionIssue;
+  delete station.lastIceAttempt;
+  if (!rtcFailures.has(reason)) return;
+  station.connectionIssue = reason;
+  if (!iceStates.has(attempt?.iceState) || typeof attempt.finishedAt !== 'string' || attempt.finishedAt.length !== 24 ||
+      new Date(attempt.finishedAt).toJSON() !== attempt.finishedAt || !iceFlags.every(key => typeof attempt[key] === 'boolean')) return;
+  const { finishedAt, iceState, iceConnected, pairSeen, localUdpAnnounced, remoteUdpSubmitted } = attempt;
+  station.lastIceAttempt = { finishedAt, iceState, iceConnected, pairSeen, localUdpAnnounced, remoteUdpSubmitted };
 }
 // Inventory values can predate this connection. Keep them separate from confirmed live state.
 function rememberReading(entry, name, value, metadata) {
@@ -167,6 +181,7 @@ export class EufyAdapter extends EventEmitter {
   #serial;
   #credentialPath;
   #generation = 0;
+  #connectionRevision = 0;
   #changingGuardMode = false;
 
   constructor({ url, stationSerial, credentialPath }) {
@@ -233,10 +248,12 @@ export class EufyAdapter extends EventEmitter {
         return;
       }
       this.#refreshSchedule(station);
-      this.#request('station.is_connected', { serialNumber: station.id }).then(({ connected, reason, confirmedMode }) => {
-        if (this.#selected() !== station) return;
-        if (!connected && rtcFailures.has(reason)) station.connectionIssue = reason;
-        if (station.online !== connected) this.#event({ source: 'station', serialNumber: station.id, event: connected ? 'connected' : 'disconnected' });
+      const revision = this.#connectionRevision;
+      this.#request('station.is_connected', { serialNumber: station.id }).then(({ connected, reason, iceAttempt, confirmedMode }) => {
+        if (this.#selected() !== station || this.#connectionRevision !== revision) return;
+        if (station.online !== connected) {
+          this.#event({ source: 'station', serialNumber: station.id, event: connected ? 'connected' : 'disconnected', reason, iceAttempt });
+        } else if (!connected && reason !== undefined) recordConnectionFailure(station, reason, iceAttempt);
         this.#readConfirmedMode(station, confirmedMode);
       }).catch(() => this.#disconnect(socket));
     }, 30_000);
@@ -336,7 +353,7 @@ export class EufyAdapter extends EventEmitter {
         record.entry.online = status.connected === true;
         record.verifiesMode = Object.hasOwn(status, 'confirmedMode');
         this.#readConfirmedMode(record.entry, status.confirmedMode);
-        if (!record.entry.online && rtcFailures.has(status.reason)) record.entry.connectionIssue = status.reason;
+        if (!record.entry.online) recordConnectionFailure(record.entry, status.reason, status.iceAttempt);
       }
       else {
         record.entry.live = status.commands.includes('start_livestream');
@@ -455,10 +472,13 @@ export class EufyAdapter extends EventEmitter {
       return;
     }
     if (source === 'station' && ['connected', 'disconnected', 'connection error'].includes(action)) {
+      this.#connectionRevision++;
       const wasOnline = entry.online;
       entry.online = action === 'connected';
-      if (entry.online) delete entry.connectionIssue;
-      else if (rtcFailures.has(event.reason)) entry.connectionIssue = event.reason;
+      if (entry.online) recordConnectionFailure(entry);
+      else if (wasOnline || action === 'connection error' || event.reason !== undefined) {
+        recordConnectionFailure(entry, event.reason, event.iceAttempt);
+      }
       if (this.#selected()?.id === id) this.#updatedAt = null;
       if (this.#selected() === entry && (entry.online !== wasOnline || action === 'connection error')) {
         this.emit('stationConnection', rtcFailures.has(event.reason) ? event.reason : undefined);

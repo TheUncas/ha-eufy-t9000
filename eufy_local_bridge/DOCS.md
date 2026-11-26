@@ -88,6 +88,19 @@ Avec la version **1.3.2**, démarrez le module et redémarrez Home Assistant Cor
 
 Les compteurs couvrent les messages STUN Binding sur UDP/IPv4 non fragmenté durant la fenêtre du test. Ils incluent les retransmissions et regroupent les échanges de la base sur toutes les interfaces. Ils ne relient pas une réponse à une requête ou à une session particulière. Pour partager le résultat, les six valeurs et `connection_issue` suffisent.
 
+### Lire le dernier essai ICE du connecteur
+
+La version **1.3.3** corrige un cas où l’expiration d’une ancienne tentative pouvait fermer la connexion suivante. Après la mise à jour, démarrez le module, redémarrez Home Assistant Core et appuyez sur **Tester la liaison UDP**. Dans **Outils de développement → États**, ouvrez **Alarme T9000**. Si la base reste hors ligne, l’attribut `connection_issue` donne le dernier motif. Lorsqu’une tentative avec un pair ICE expire, `last_ice_attempt` précise ce que le connecteur a observé.
+
+| Champ | Lecture |
+|---|---|
+| `finished_at` | Heure UTC d’expiration. Comparez-la aux heures de début et de fin de **Diagnostic UDP** car les reconnexions automatiques produisent aussi des tentatives. |
+| `local_udp_announced` / `remote_udp_submitted` | Le module a annoncé au moins un candidat IPv4 UDP de type *host* / a soumis au moteur ICE au moins un tel candidat distant sans erreur immédiate. Ces indicateurs ne précisent pas l’interface choisie. |
+| `ice_state` | État natif à l’expiration, par exemple `checking`, `failed` ou `completed`. |
+| `ice_connected` / `pair_seen` | Le moteur a signalé une connexion ICE / le connecteur a observé une paire sélectionnée au moins une fois pendant cette tentative. |
+
+Avec `ice_unavailable` et les deux derniers indicateurs à `false`, aucune paire utilisable n’a été observée pour cet essai, même si des réponses STUN ont circulé. `ice_path_lost` indique qu’un chemin avait été observé puis perdu à l’expiration. `secure_channel_unavailable` situe le blocage après un indice de connectivité ICE. Avec `command_channel_unavailable`, le transport était connecté à l’expiration mais le canal de commande eufy n’était pas prêt. Le rapport contient uniquement l’heure, l’état et quatre indicateurs booléens.
+
 ### Lire le motif d’une erreur
 
 Dans la version 1.1.1, le message HTTP 503 indique que Home Assistant a joint la passerelle. Il ne précise pas si la commande a atteint la HomeBase. Vérifiez son mode dans l’application eufy avant de renouveler la commande.

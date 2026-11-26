@@ -1,4 +1,5 @@
 """Verified alarm mode and commands for the selected HomeBase."""
+import re
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -8,6 +9,11 @@ from homeassistant.components.alarm_control_panel import (
 
 from . import DOMAIN, RTC_CONNECTION_ERRORS
 from .guard_mode import HomeBaseModeEntity, watch_homebase
+
+_ICE_STATES = ("new", "checking", "connected", "completed", "disconnected", "failed", "closed", "unknown")
+_ICE_TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z")
+_ICE_FLAGS = {"ice_connected": "iceConnected", "pair_seen": "pairSeen",
+              "local_udp_announced": "localUdpAnnounced", "remote_udp_submitted": "remoteUdpSubmitted"}
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -39,6 +45,13 @@ class HomeBaseAlarm(HomeBaseModeEntity, AlarmControlPanelEntity):
         reason = station.get("connectionIssue")
         if online is False and isinstance(reason, str) and reason in RTC_CONNECTION_ERRORS:
             attributes["connection_issue"] = reason
+            report = station.get("lastIceAttempt")
+            if isinstance(report, dict) and report.get("iceState") in _ICE_STATES:
+                finished = report.get("finishedAt")
+                if (isinstance(finished, str) and _ICE_TIMESTAMP.fullmatch(finished)
+                        and all(type(report.get(key)) is bool for key in _ICE_FLAGS.values())):
+                    attributes["last_ice_attempt"] = {"finished_at": finished, "ice_state": report["iceState"],
+                                                      **{attr: report[key] for attr, key in _ICE_FLAGS.items()}}
         return attributes
 
     @property

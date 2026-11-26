@@ -17,8 +17,13 @@ RUN apk add --no-cache --virtual .probe-install cmd:setcap \
 RUN mkdir -p /opt/eufy-install/homeassistant && chmod 0700 /opt/eufy-install
 WORKDIR /usr/src/app
 COPY --from=connector /sdk/node_modules ./node_modules
+COPY rtc-connect.cjs ./node_modules/eufy-security-client/build/rtc/bridge-ha-rtc-connect.cjs
+COPY rtc-observe.cjs ./node_modules/eufy-security-client/build/rtc/bridge-ha-rtc-observe.cjs
+COPY patch-rtc.cjs /tmp/patch-rtc.cjs
 COPY THIRD_PARTY.md /usr/share/doc/eufy-local-bridge/THIRD_PARTY.md
-RUN node -e "require('node-datachannel')" && test -f node_modules/eufy-security-ws/dist/bin/server.js
+RUN node /tmp/patch-rtc.cjs && rm /tmp/patch-rtc.cjs \
+    && node -e "require('node-datachannel'); require('./node_modules/eufy-security-client/build/rtc/stationRtcTransport')" \
+    && test -f node_modules/eufy-security-ws/dist/bin/server.js
 COPY runtime/ /app/
 COPY api.mjs run.mjs install-component.mjs udp-diagnostic.mjs /app/home-assistant/addon/
 COPY component/ /opt/eufy-component/

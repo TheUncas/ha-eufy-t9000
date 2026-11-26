@@ -10,6 +10,9 @@
 !install-component.mjs
 !udp-diagnostic.mjs
 !udp-probe.c
+!patch-rtc.cjs
+!rtc-connect.cjs
+!rtc-observe.cjs
 !connector-amd64.tar.gz
 !connector-amd64.tar.gz.sha256
 !runtime/adapter.mjs

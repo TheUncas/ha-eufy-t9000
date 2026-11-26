@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline';
 import { fail } from '../../http-api.mjs';
 
 const probe = '/usr/local/libexec/eufy-udp-probe';
+const stunFields = ['requestsSent', 'requestsReceived', 'successesSent', 'successesReceived', 'errorsSent', 'errorsReceived'];
 
 function idle(stationId) {
   return { stationId, status: 'idle', interfaces: [], startedAt: null, finishedAt: null, reason: null };
@@ -67,6 +68,7 @@ export class UdpDiagnostic {
     const run = this.#active = { target, child };
     let ready = false;
     let interfaces;
+    let stun;
     let connectionRefused = false;
     // The fixed probe emits one readiness line after installing its filter,
     // and one counter report. Publish a report only after a successful exit.
@@ -87,6 +89,14 @@ export class UdpDiagnostic {
         } else {
           if (interfaces) throw Error();
           interfaces = counters(message.interfaces);
+          if (message.stun !== undefined) {
+            stun = {};
+            for (const field of stunFields) {
+              const count = message.stun[field];
+              if (!Number.isSafeInteger(count) || count < 0) throw Error();
+              stun[field] = count;
+            }
+          }
         }
       } catch { this.#abort('capture_unavailable'); }
     });
@@ -111,6 +121,7 @@ export class UdpDiagnostic {
         else status = 'no_traffic';
       }
       this.#result = { ...this.#result, status, interfaces: code === 0 ? (interfaces ?? []) : [],
+        ...(status !== 'error' && stun ? { stun } : {}),
         reason, finishedAt: new Date().toISOString() };
     });
   }

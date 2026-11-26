@@ -24,6 +24,24 @@
           "received_by_interface": {
             "name": "Paquets reçus de la HomeBase par interface"
           },
+          "stun_requests_sent": {
+            "name": "Requêtes STUN Binding envoyées à la HomeBase"
+          },
+          "stun_requests_received": {
+            "name": "Requêtes STUN Binding reçues de la HomeBase"
+          },
+          "stun_successes_sent": {
+            "name": "Réponses STUN de succès envoyées à la HomeBase"
+          },
+          "stun_successes_received": {
+            "name": "Réponses STUN de succès reçues de la HomeBase"
+          },
+          "stun_errors_sent": {
+            "name": "Réponses d’erreur STUN envoyées à la HomeBase"
+          },
+          "stun_errors_received": {
+            "name": "Réponses d’erreur STUN reçues de la HomeBase"
+          },
           "started_at": {
             "name": "Début du test"
           },

@@ -24,6 +24,11 @@ struct interface_count {
     uint64_t sent, received;
 };
 
+/* The locked filter encodes the classification in its IPv4 snapshot length.
+ * All lengths include the source address and exclude UDP and STUN bytes. */
+enum snapshot_length { BINDING_ERROR = 17, BINDING_SUCCESS, BINDING_REQUEST, OTHER_UDP };
+struct stun_counts { uint64_t requests, successes, errors; };
+
 static int station_address(const char *text, struct in_addr *ip) {
     if (inet_pton(AF_INET, text, ip) != 1) return 0;
     const uint32_t n = ntohl(ip->s_addr);
@@ -35,18 +40,64 @@ static int start_capture(struct in_addr station) {
     int fd = socket(AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
     if (fd < 0) return -1;
     const uint32_t ip = ntohl(station.s_addr);
+#define REQUIRE(op, value, fallback) \
+    BPF_JUMP(BPF_JMP | (op), (value), 1, 0), BPF_STMT(BPF_RET | BPF_K, (fallback))
     struct sock_filter rules[] = {
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, SKF_AD_OFF + SKF_AD_PROTOCOL),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ETH_P_IP, 0, 7),
+        REQUIRE(BPF_JEQ | BPF_K, ETH_P_IP, 0),
+        BPF_STMT(BPF_LD | BPF_W | BPF_LEN, 0),
+        REQUIRE(BPF_JGE | BPF_K, 20, 0),
         BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 9),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, IPPROTO_UDP, 0, 5),
+        REQUIRE(BPF_JEQ | BPF_K, IPPROTO_UDP, 0),
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 12),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ip, 2, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ip, 3, 0),
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, 16),
-        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, ip, 0, 1),
-        BPF_STMT(BPF_RET | BPF_K, 20), /* Only the fixed IPv4 header. */
-        BPF_STMT(BPF_RET | BPF_K, 0)
+        REQUIRE(BPF_JEQ | BPF_K, ip, 0),
+
+        /* Only inspect complete, unfragmented UDP datagrams. Check all lengths
+         * before indirect loads: an out-of-bounds BPF load would drop the packet
+         * entirely instead of counting it as ordinary UDP. */
+        BPF_STMT(BPF_LD | BPF_B | BPF_ABS, 0),
+        REQUIRE(BPF_JGE | BPF_K, 0x45, OTHER_UDP),
+        BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x50, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, OTHER_UDP),
+        BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 6),
+        BPF_JUMP(BPF_JMP | BPF_JSET | BPF_K, 0x3fff, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, OTHER_UDP),
+        BPF_STMT(BPF_LD | BPF_H | BPF_ABS, 2),
+        BPF_STMT(BPF_MISC | BPF_TAX, 0),
+        BPF_STMT(BPF_LD | BPF_W | BPF_LEN, 0),
+        REQUIRE(BPF_JGE | BPF_X, 0, OTHER_UDP),
+        BPF_STMT(BPF_MISC | BPF_TXA, 0),
+        BPF_STMT(BPF_LDX | BPF_B | BPF_MSH, 0), /* X = IPv4 header length. */
+        REQUIRE(BPF_JGE | BPF_X, 0, OTHER_UDP),
+        BPF_STMT(BPF_ALU | BPF_SUB | BPF_X, 0),
+        REQUIRE(BPF_JGE | BPF_K, 28, OTHER_UDP), /* UDP + fixed STUN headers. */
+        BPF_STMT(BPF_ST, 0),
+        BPF_STMT(BPF_LD | BPF_H | BPF_IND, 4),
+        BPF_STMT(BPF_LDX | BPF_MEM, 0),
+        REQUIRE(BPF_JEQ | BPF_X, 0, OTHER_UDP), /* UDP length = IPv4 payload. */
+        BPF_STMT(BPF_ALU | BPF_SUB | BPF_K, 28),
+        BPF_JUMP(BPF_JMP | BPF_JSET | BPF_K, 3, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, OTHER_UDP),
+        BPF_STMT(BPF_ST, 0),
+        BPF_STMT(BPF_LDX | BPF_B | BPF_MSH, 0),
+        BPF_STMT(BPF_LD | BPF_H | BPF_IND, 10),
+        BPF_STMT(BPF_LDX | BPF_MEM, 0),
+        REQUIRE(BPF_JEQ | BPF_X, 0, OTHER_UDP), /* STUN message length. */
+        BPF_STMT(BPF_LDX | BPF_B | BPF_MSH, 0),
+        BPF_STMT(BPF_LD | BPF_W | BPF_IND, 12),
+        REQUIRE(BPF_JEQ | BPF_K, 0x2112a442, OTHER_UDP),
+        BPF_STMT(BPF_LD | BPF_H | BPF_IND, 8),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x0001, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, BINDING_REQUEST),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x0101, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, BINDING_SUCCESS),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0x0111, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, BINDING_ERROR),
+        BPF_STMT(BPF_RET | BPF_K, OTHER_UDP)
     };
+#undef REQUIRE
     struct sock_fprog filter = { .len = sizeof rules / sizeof rules[0], .filter = rules };
     int lock = 1;
     struct sockaddr_ll all = { .sll_family = AF_PACKET, .sll_protocol = htons(ETH_P_ALL) };
@@ -78,6 +129,7 @@ int main(int argc, char **argv) {
     if (fflush(stdout)) return 1;
 
     struct interface_count counts[64] = {0};
+    struct stun_counts sent = {0}, received = {0};
     size_t used = 0;
     struct pollfd pollfd = { .fd = fd, .events = POLLIN };
     const int64_t deadline = monotonic_ms() + 90000;
@@ -93,7 +145,7 @@ int main(int argc, char **argv) {
         socklen_t size = sizeof link;
         ssize_t length = recvfrom(fd, ip, sizeof ip, 0, (struct sockaddr *)&link, &size);
         if (length < 0 && (errno == EAGAIN || errno == EINTR)) continue;
-        if (length != sizeof ip || link.sll_ifindex <= 0) return 1;
+        if (length < BINDING_ERROR || length > OTHER_UDP || link.sll_ifindex <= 0) return 1;
         size_t i = 0;
         unsigned int index = (unsigned int)link.sll_ifindex;
         while (i < used && counts[i].index != index) ++i;
@@ -107,8 +159,19 @@ int main(int argc, char **argv) {
                 snprintf(name, IF_NAMESIZE, "if%u", index);
             ++used;
         }
-        if (memcmp(ip + 12, &station.s_addr, 4) == 0) ++counts[i].received;
-        else ++counts[i].sent;
+        struct stun_counts *direction;
+        if (memcmp(ip + 12, &station.s_addr, 4) == 0) {
+            ++counts[i].received;
+            direction = &received;
+        } else {
+            ++counts[i].sent;
+            direction = &sent;
+        }
+        switch (length) {
+        case BINDING_REQUEST: ++direction->requests; break;
+        case BINDING_SUCCESS: ++direction->successes; break;
+        case BINDING_ERROR: ++direction->errors; break;
+        }
     }
     close(fd);
     fputs("{\"interfaces\":[", stdout);
@@ -116,6 +179,10 @@ int main(int argc, char **argv) {
         printf("%s{\"name\":\"%s\",\"sent\":%" PRIu64 ",\"received\":%" PRIu64 "}",
                i ? "," : "", counts[i].name, counts[i].sent, counts[i].received);
     }
-    puts("]}");
+    printf("],\"stun\":{\"requestsSent\":%" PRIu64 ",\"requestsReceived\":%" PRIu64
+           ",\"successesSent\":%" PRIu64 ",\"successesReceived\":%" PRIu64
+           ",\"errorsSent\":%" PRIu64 ",\"errorsReceived\":%" PRIu64 "}}\n",
+           sent.requests, received.requests, sent.successes, received.successes,
+           sent.errors, received.errors);
     return 0;
 }

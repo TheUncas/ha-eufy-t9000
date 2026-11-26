@@ -9,6 +9,15 @@ from . import DOMAIN
 from .guard_mode import watch_homebase
 from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, udp_report
 
+STUN_ATTRIBUTES = {
+    "stun_requests_sent": "requestsSent",
+    "stun_requests_received": "requestsReceived",
+    "stun_successes_sent": "successesSent",
+    "stun_successes_received": "successesReceived",
+    "stun_errors_sent": "errorsSent",
+    "stun_errors_received": "errorsReceived",
+}
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     _watch_batteries(hass.data[DOMAIN], async_add_entities)
@@ -45,6 +54,11 @@ class UdpLinkResult(UdpDiagnosticEntity, SensorEntity):
             "started_at": report.get("startedAt"),
             "finished_at": report.get("finishedAt"),
         }
+        if report.get("status") in ("bidirectional", "outbound_only", "inbound_only", "no_traffic"):
+            stun = report.get("stun")
+            if isinstance(stun, dict) and all(type(stun.get(key)) is int and stun[key] >= 0
+                                              for key in STUN_ATTRIBUTES.values()):
+                attributes.update({attr: stun[key] for attr, key in STUN_ATTRIBUTES.items()})
         if report.get("reason") in ("address_unavailable", "capture_unavailable", "station_changed", "connection_unavailable"):
             attributes["reason"] = report["reason"]
         return attributes

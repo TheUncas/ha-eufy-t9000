@@ -70,9 +70,23 @@ La tuile affiche l’état actif confirmé par la base. Le sélecteur affiche le
 
 Le capteur indique si des paquets circulent dans les deux sens, en sortie seulement, en entrée seulement, ou si aucun trafic n’a été observé. Ses attributs donnent les compteurs par interface et les heures du test. En cas d’échec, consultez l’attribut **Motif**. Un échange dans les deux sens confirme la circulation de paquets avec la base. L’attribut `homebase_online` de l’alarme indique si la liaison eufy a effectivement abouti.
 
-Le module utilise automatiquement l’IPv4 locale annoncée par la HomeBase. Avec l’autorisation Linux `NET_RAW`, la sonde compte les paquets UDP à destination ou en provenance de cette adresse en lisant leur en-tête IPv4. Aucun contenu de paquet n’est enregistré. Les compteurs du dernier test restent accessibles dans le module jusqu’au test suivant ou à son redémarrage.
+Le module utilise automatiquement l’IPv4 locale annoncée par la HomeBase. Avec l’autorisation Linux `NET_RAW`, un filtre du noyau examine les en-têtes des paquets échangés avec cette adresse. La sonde reçoit au plus les 20 premiers octets de l’en-tête IPv4. Le module conserve en mémoire les compteurs du dernier test jusqu’au suivant ou à son redémarrage.
 
 À partir de la version **1.3.1**, le module attend jusqu’à 15 secondes que la collecte des candidats ICE se termine pour les inclure dans sa réponse à la HomeBase. Si le délai expire, il envoie la réponse initiale. Pour vérifier si la session s’ouvre, lancez **Tester la liaison UDP**, puis consultez `homebase_online` dans les attributs d’**Alarme T9000**.
+
+### Localiser un blocage ICE malgré du trafic UDP
+
+Avec la version **1.3.2**, démarrez le module et redémarrez Home Assistant Core pour charger les nouveaux attributs du capteur. Appuyez sur **Tester la liaison UDP** et attendez la fin des 90 secondes. Dans **Diagnostic UDP**, les six attributs `stun_*` comptent les requêtes STUN Binding et les réponses de succès ou d’erreur observées dans chaque sens. « Envoyé » désigne un paquet allant vers la HomeBase. [Vérifications de connectivité ICE](https://www.rfc-editor.org/rfc/rfc8445.html#section-7)
+
+| Observation pendant le test | Ce qu’elle permet de vérifier |
+|---|---|
+| Les six compteurs sont à zéro malgré le trafic UDP | Aucune vérification STUN Binding reconnue avec cette IPv4. Il faut ensuite vérifier quels candidats UDP la VM et la base ont annoncés lors de la tentative. |
+| Des requêtes partent vers la base, aucune réponse de succès ou d’erreur ne revient | La VM émet des vérifications. Aucune réponse STUN de la base n’est visible sur le chemin observé. |
+| Des requêtes arrivent de la base, aucune réponse ne repart | Les vérifications atteignent la VM. La réception de ces paquets par le connecteur et sa capacité à répondre restent à vérifier. |
+| Des réponses d’erreur circulent | Au moins un participant signale une erreur STUN. Le sens indique lequel l’a émise. |
+| Des réponses de succès circulent et `homebase_online` reste à `false` | Consultez `connection_issue`. Avec `ice_unavailable`, il faut ensuite examiner la sélection de la paire ICE. |
+
+Les compteurs couvrent les messages STUN Binding sur UDP/IPv4 non fragmenté durant la fenêtre du test. Ils incluent les retransmissions et regroupent les échanges de la base sur toutes les interfaces. Ils ne relient pas une réponse à une requête ou à une session particulière. Pour partager le résultat, les six valeurs et `connection_issue` suffisent.
 
 ### Lire le motif d’une erreur
 

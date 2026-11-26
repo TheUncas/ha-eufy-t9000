@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Pair the T9000 app",
+        "description": "Start the Eufy Local Bridge app on this Home Assistant host. Enter its pairing key and the SHA-256 certificate fingerprint printed in the app log.",
+        "data": {
+          "token": "App pairing key",
+          "fingerprint": "Certificate SHA-256 fingerprint"
+        }
+      },
+      "account": {
+        "title": "Sign in to eufy",
+        "description": "Use HTTPS to open Home Assistant before entering your eufy credentials. Enter your account’s two-letter country code, such as FR. Only the encrypted eufy session is kept after sign-in.",
+        "data": {
+          "email": "Email address",
+          "password": "eufy password",
+          "country": "Account country code"
+        }
+      },
+      "waiting": {
+        "title": "Waiting for eufy",
+        "description": "Wait a few seconds, then select Submit to check for a verification request or finish pairing."
+      },
+      "verify_code": {
+        "title": "Verify your eufy account",
+        "description": "Enter the six-digit verification code sent by eufy.",
+        "data": {
+          "code": "Verification code"
+        }
+      },
+      "captcha": {
+        "title": "Complete the visual check",
+        "description": "{image}\n\nEnter the characters shown in the image.",
+        "data": {
+          "captcha": "Characters in the image"
+        }
+      }
+    },
+    "error": {
+      "invalid_token": "Check the pairing key in the app options (32–128 letters, digits, hyphens or underscores).",
+      "invalid_fingerprint": "Check the SHA-256 fingerprint printed in the app log.",
+      "cannot_connect": "The local app did not respond. Verify it is running and try again.",
+      "eufy_refused": "eufy refused the request. Check the information and try again.",
+      "captcha_unavailable": "The verification image is unavailable. Check again in a moment."
+    },
+    "abort": {
+      "already_configured": "This local app is already paired.",
+      "yaml_active": "Remove the eufy_local_bridge section from configuration.yaml and restart Home Assistant before pairing the local app. Existing entity identifiers will be reused.",
+      "reauth_successful": "Authentication renewed."
+    }
+  }
+}

@@ -1,0 +1,21 @@
+name: Eufy Local Bridge T9000
+version: "1.1.0"
+slug: eufy_local_bridge
+url: https://github.com/TheUncas/ha-eufy-t9000
+description: Connecte Home Assistant à la HomeBase T9000 pour les batteries, l’alarme et les caméras.
+arch:
+  - amd64
+startup: services
+boot: auto
+host_network: true
+tmpfs: true
+init: true
+timeout: 30
+map:
+  - type: homeassistant_config
+    read_only: false
+    path: /opt/eufy-install/homeassistant
+options:
+  pairing_key: ""
+schema:
+  pairing_key: password

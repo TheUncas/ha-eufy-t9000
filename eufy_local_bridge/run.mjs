@@ -67,6 +67,7 @@ async function run() {
       PATH: process.env.PATH, TZ: process.env.TZ || 'UTC',
       EUFY_DATA_DIR: '/data/eufy', EUFY_KEY_DIR: '/data/keys', EUFY_IPC_DIR: ipc, EUFY_DRIVER_PORT: driverPort,
       EUFY_SCHEDULE_TIME_ZONE: process.env.TZ || 'UTC', RTC_NO_TURN: '1', RTC_CLIENT_OFFER: '0',
+      RTC_DELAY_SDP_UNTIL_GATHERING: '1',
       RTC_HANDOFF: '1', RTC_SCTP_MAX_PACKET_BYTES: '800', RTC_HANDSHAKE_PACE_MS: '0.6',
       RTC_PROACTIVE_RECONNECT_MS: '270000', RTC_SWIPE_WAKE: '0', RTC_LIVE_WAKE: '0'
     }

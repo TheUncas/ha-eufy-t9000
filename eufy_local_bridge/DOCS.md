@@ -72,6 +72,8 @@ Le capteur indique si des paquets circulent dans les deux sens, en sortie seulem
 
 Le module utilise automatiquement l’IPv4 locale annoncée par la HomeBase. Avec l’autorisation Linux `NET_RAW`, la sonde compte les paquets UDP à destination ou en provenance de cette adresse en lisant leur en-tête IPv4. Aucun contenu de paquet n’est enregistré. Les compteurs du dernier test restent accessibles dans le module jusqu’au test suivant ou à son redémarrage.
 
+À partir de la version **1.3.1**, le module attend jusqu’à 15 secondes que la collecte des candidats ICE se termine pour les inclure dans sa réponse à la HomeBase. Si le délai expire, il envoie la réponse initiale. Pour vérifier si la session s’ouvre, lancez **Tester la liaison UDP**, puis consultez `homebase_online` dans les attributs d’**Alarme T9000**.
+
 ### Lire le motif d’une erreur
 
 Dans la version 1.1.1, le message HTTP 503 indique que Home Assistant a joint la passerelle. Il ne précise pas si la commande a atteint la HomeBase. Vérifiez son mode dans l’application eufy avant de renouveler la commande.

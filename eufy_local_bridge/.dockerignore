@@ -1,6 +1,7 @@
 **
 !.dockerignore
 !config.yaml
+!icon.png
 !DOCS.md
 !THIRD_PARTY.md
 !Dockerfile

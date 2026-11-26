@@ -20,7 +20,7 @@
       },
       "waiting": {
         "title": "En attente d’eufy",
-        "description": "Patientez quelques secondes, puis validez pour vérifier si eufy demande un code ou pour terminer l’appairage."
+        "description": "Home Assistant affichera automatiquement la prochaine étape."
       },
       "verify_code": {
         "title": "Vérifier le compte eufy",
@@ -37,7 +37,11 @@
         }
       }
     },
+    "progress": {
+      "wait_for_eufy": "Vérification en cours auprès d’eufy. Une demande de code ou de captcha s’affichera ici."
+    },
     "error": {
+      "login_timeout": "Le module n’a reçu aucune confirmation d’eufy en 90 secondes. Vérifiez l’accès Internet de Home Assistant et le pays du compte, puis réessayez.",
       "invalid_token": "Vérifiez la clé d’appairage dans les options de l’application (32 à 128 lettres, chiffres, tirets ou tirets bas).",
       "invalid_fingerprint": "Vérifiez l’empreinte SHA-256 affichée dans le journal de l’application.",
       "cannot_connect": "L’application locale ne répond pas. Vérifiez qu’elle est démarrée et réessayez.",

@@ -1,5 +1,7 @@
 # Eufy Local Bridge pour Home Assistant
 
+<img align="right" width="64" height="64" alt="eufy" src="https://raw.githubusercontent.com/home-assistant/brands/master/core_integrations/eufy/icon.png">
+
 <a href="https://buymeacoffee.com/theuncas"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="180" alt="M’offrir un café sur Buy Me a Coffee"></a>
 
 Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou VM **Intel/AMD 64 bits**. Vous pouvez consulter les batteries, suivre les capteurs d’ouverture et de mouvement, commander l’alarme et afficher le direct des caméras compatibles depuis vos cartes et automatisations. La VM communique elle-même avec eufy et avec la base.
@@ -9,10 +11,24 @@ Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou
 ## Installation
 
 1. Cliquez sur le lien ci-dessus et confirmez l’ajout. Vous pouvez aussi ouvrir **Paramètres → Applications → Boutique → ⋮ → Dépôts** et saisir `https://github.com/TheUncas/ha-eufy-t9000`.
-2. Installez **Eufy Local Bridge T9000**. Dans l’onglet **Configuration**, définissez `pairing_key` avec une clé aléatoire dédiée de 32 à 128 caractères (lettres, chiffres, tiret ou tiret bas). Enregistrez et démarrez le module. Activez **Démarrer au démarrage**.
+2. Installez **Eufy Local Bridge T9000**. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez et démarrez le module. Activez **Démarrer au démarrage**.
 3. Dans l’onglet **Journal**, vérifiez que le module a installé l’intégration et copiez l’empreinte publique SHA-256. **Redémarrez Home Assistant Core** pour charger l’intégration.
-4. Ouvrez Home Assistant en **HTTPS**. Dans **Paramètres → Appareils et services → Ajouter une intégration**, cherchez **Passerelle eufy locale**. Saisissez la clé et l’empreinte, puis connectez votre compte eufy. Le formulaire prend en charge le captcha et le code de vérification.
+4. Ouvrez Home Assistant en **HTTPS**. Dans **Paramètres → Appareils et services → Ajouter une intégration**, cherchez **Passerelle eufy locale**. Collez **la même clé** dans le champ de la clé d’appairage et l’empreinte du journal dans le champ SHA-256. Connectez ensuite votre compte eufy. Le formulaire prend en charge le captcha et le code de vérification.
 5. Ouvrez les entités **Alarme T9000** et **Eufy batterie** pour vérifier la première lecture. L’alarme affiche le mode confirmé par la base.
+
+## Générer la clé
+
+La `pairing_key` est le secret partagé entre l’intégration Home Assistant et le module. L’intégration le présente pour lire les états et envoyer des commandes à l’alarme. L’empreinte SHA-256 du journal est publique et permet à l’intégration de vérifier le certificat du module.
+
+Générez la clé **une seule fois** et conservez-la dans votre gestionnaire de mots de passe. Vous pouvez utiliser son générateur avec 32 à 128 caractères parmi `A–Z`, `a–z`, `0–9`, `-` et `_`. Sur Windows, ce bloc PowerShell génère une clé de 64 caractères à partir de 32 octets aléatoires.
+
+```powershell
+$octets = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($octets)
+$rng.Dispose()
+[BitConverter]::ToString($octets).Replace('-', '').ToLowerInvariant()
+```
 
 ## Notes d’utilisation
 

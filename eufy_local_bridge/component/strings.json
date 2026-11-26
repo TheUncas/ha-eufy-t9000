@@ -20,7 +20,7 @@
       },
       "waiting": {
         "title": "Waiting for eufy",
-        "description": "Wait a few seconds, then select Submit to check for a verification request or finish pairing."
+        "description": "Home Assistant will display the next step automatically."
       },
       "verify_code": {
         "title": "Verify your eufy account",
@@ -37,7 +37,11 @@
         }
       }
     },
+    "progress": {
+      "wait_for_eufy": "Checking whether eufy is ready or needs a verification code."
+    },
     "error": {
+      "login_timeout": "The app received no confirmation from eufy within 90 seconds. Check that Home Assistant has internet access and that the account country is correct, then try again.",
       "invalid_token": "Check the pairing key in the app options (32–128 letters, digits, hyphens or underscores).",
       "invalid_fingerprint": "Check the SHA-256 fingerprint printed in the app log.",
       "cannot_connect": "The local app did not respond. Verify it is running and try again.",

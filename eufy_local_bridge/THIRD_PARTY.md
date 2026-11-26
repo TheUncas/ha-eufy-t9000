@@ -10,3 +10,7 @@ L’archive `connector-amd64.tar.gz` contient les paquets de fonctionnement de l
 | node-datachannel | [Version 0.32.3](https://github.com/murat-dogan/node-datachannel/tree/v0.32.3) | Sources C++ du binaire recompilé sous `node_modules/node-datachannel/src/cpp`, licence MPL-2.0 sous `node_modules/node-datachannel/LICENSE` |
 | node-addon-api | [Version 7.1.1](https://github.com/nodejs/node-addon-api/tree/v7.1.1) | Licence de ses en-têtes sous `node_modules/node-datachannel/NODE-ADDON-API-LICENSE.md` |
 | long-timeout | [Projet de Christian Tellnes](https://github.com/tellnes/long-timeout) | Christian Tellnes, MIT. Le texte de cette licence figure notamment sous `node_modules/eufy-security-client/LICENSE`. |
+
+## Icône eufy
+
+Le module utilise le logo eufy du catalogue de marques Home Assistant, redimensionné à 128 × 128 pixels pour la boutique. [Visuel source](https://github.com/home-assistant/brands/blob/master/core_integrations/eufy/icon.png)

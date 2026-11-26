@@ -1,6 +1,6 @@
 """Pair Home Assistant and complete eufy challenges inside the native setup flow."""
+import asyncio
 import re
-from time import monotonic
 
 from homeassistant import config_entries
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
@@ -16,6 +16,8 @@ _ACCOUNT = vol.Schema({
     vol.Required("country"): vol.All(str, vol.Match(r"^[A-Za-z]{2}$")),
 })
 _CAPTCHA = re.compile(r"data:image/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/=]+")
+POLL_INTERVAL = 2
+WAIT_TIMEOUT = 90
 
 
 class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -24,7 +26,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         self._pairing = None
         self._captcha = ""
-        self._sent_at = None
+        self._submitted = False
+        self._poll_task = None
 
     async def async_step_user(self, user_input=None):
         if self.context["source"] != config_entries.SOURCE_REAUTH:
@@ -49,7 +52,13 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": str(err)})
 
     async def _next_step(self):
+        self._submitted = False
         model = await account_request(self.hass, self._pairing, "status")
+        if model["status"] == "starting":
+            return await self.async_step_waiting()
+        return await self._route_status(model)
+
+    async def _route_status(self, model):
         status = model["status"]
         if status == "connected":
             if self.context["source"] == config_entries.SOURCE_REAUTH:
@@ -59,23 +68,44 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             image = model.get("captcha")
             self._captcha = image if isinstance(image, str) and len(image) <= 1_000_000 and _CAPTCHA.fullmatch(image) else ""
             if not self._captcha:
-                return self.async_show_form(step_id="waiting", data_schema=vol.Schema({}),
+                return self.async_show_form(step_id="account", data_schema=_ACCOUNT,
                                             errors={"base": "captcha_unavailable"})
             return await self.async_step_captcha()
         if status == "verify_code":
             return await self.async_step_verify_code()
-        if status == "starting" or (
-            status in ("offline", "disconnected") and self._sent_at is not None and monotonic() - self._sent_at < 300
-        ):
-            return self.async_show_form(step_id="waiting", data_schema=vol.Schema({}))
-        errors = {"base": "eufy_refused"} if status in ("error", "reauth_required") and self._sent_at else {}
+        errors = {"base": "eufy_refused"} if status in ("error", "reauth_required") and self._submitted else {}
         return self.async_show_form(step_id="account", data_schema=_ACCOUNT, errors=errors)
 
-    async def async_step_waiting(self, user_input=None):
+    async def _poll_status(self):
+        pending = ("starting", "offline", "disconnected") if self._submitted else ("starting",)
         try:
-            return await self._next_step()
+            async with asyncio.timeout(WAIT_TIMEOUT):
+                while True:
+                    model = await account_request(self.hass, self._pairing, "status")
+                    if model["status"] not in pending:
+                        return model
+                    await asyncio.sleep(POLL_INTERVAL)
+        except TimeoutError:
+            return "login_timeout"
         except PairingError as err:
-            return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": str(err)})
+            return str(err)
+
+    async def async_step_waiting(self, user_input=None):
+        if self._poll_task is None:
+            self._poll_task = self.hass.async_create_task(self._poll_status())
+        elif self._poll_task.done():
+            return self.async_show_progress_done(next_step_id="login_result")
+        return self.async_show_progress(step_id="waiting", progress_action="wait_for_eufy",
+                                       progress_task=self._poll_task)
+
+    async def async_step_login_result(self, user_input=None):
+        result = self._poll_task.result()
+        self._poll_task = None
+        if result == "login_timeout":
+            return self.async_show_form(step_id="account", data_schema=_ACCOUNT, errors={"base": result})
+        if isinstance(result, str):
+            return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": result})
+        return await self._route_status(result)
 
     async def async_step_account(self, user_input=None):
         return await self._submit("account", _ACCOUNT, "login", user_input)
@@ -94,8 +124,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 await account_request(self.hass, self._pairing, endpoint, user_input)
-                self._sent_at = monotonic()
-                return self.async_show_form(step_id="waiting", data_schema=vol.Schema({}))
+                self._submitted = True
+                return await self.async_step_waiting()
             except PairingError as err:
                 if str(err) in ("invalid_token", "invalid_fingerprint"):
                     return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": str(err)})

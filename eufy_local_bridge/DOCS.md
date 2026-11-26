@@ -1,25 +1,42 @@
 # Installer Eufy Local Bridge dans Home Assistant OS
 
+<a href="https://buymeacoffee.com/theuncas"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="180" alt="M’offrir un café sur Buy Me a Coffee"></a>
+
 Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS sur **PC ou VM Intel/AMD 64 bits**. L’intégration fournit les entités aux tableaux de bord et aux automatisations. Le PC qui héberge le site Windows peut être éteint. La VM doit pouvoir joindre la HomeBase sur le réseau local. Sous VMware, utilisez une carte réseau en mode pont sur ce réseau.
 
 ## Installer depuis la boutique
 
 1. Ouvrez [Ajouter le dépôt Eufy Local Bridge à Home Assistant](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FTheUncas%2Fha-eufy-t9000) et confirmez. Pour l’ajouter manuellement, ouvrez **Paramètres → Applications** (ou **Modules complémentaires**), puis **Boutique → ⋮ → Dépôts**. Saisissez `https://github.com/TheUncas/ha-eufy-t9000`.
 2. Ouvrez **Eufy Local Bridge T9000** dans la boutique et sélectionnez **Installer**. La première construction nécessite Internet. Si le module tarde à apparaître, choisissez **Rechercher des mises à jour** dans le menu de la boutique. [Fonctionnement des dépôts Home Assistant](https://contributors.home-assistant.io/apps/guides/repository/)
-3. Dans l’onglet **Configuration**, renseignez `pairing_key` avec une clé aléatoire dédiée de 32 à 128 caractères parmi lettres, chiffres, tiret et tiret bas. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
+3. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
 4. **Redémarrez Home Assistant Core** lorsque le journal le demande. Le module installe les fichiers dans `custom_components/eufy_local_bridge` et indique les mises à jour qui nécessitent un nouveau redémarrage.
 
 ### Si vous utilisiez déjà une version précédente
 
+- **Fenêtre « En attente d’eufy » de la version 1.1.0** — Fermez cette fenêtre. Après la mise à jour du module vers la version 1.1.1, démarrez-le, vérifiez dans son journal que l’intégration a été mise à jour, puis redémarrez Home Assistant Core. Relancez l’appairage dans **Appareils et services** avec votre clé et l’empreinte du journal.
 - **Ancien module installé depuis le ZIP** — Les versions locale et boutique sont deux installations distinctes pour Home Assistant. Arrêtez l’ancien module et désactivez son démarrage automatique avant de démarrer celui de la boutique, car ils utilisent les mêmes ports. La nouvelle installation a son propre certificat et son propre stockage. Dans Home Assistant, suivez la demande de réauthentification avec la nouvelle empreinte et la clé choisie.
 - **Intégration YAML vers le PC Windows** — Retirez uniquement l’ancien bloc `eufy_local_bridge:` dans `configuration.yaml`, vérifiez la configuration et redémarrez Core après le premier démarrage du module. Si vous utilisiez le package REST, désactivez sa déclaration pour éviter les doublons.
 - L’installateur reconnaît les versions déjà distribuées. S’il signale un conflit avec des fichiers personnalisés, sauvegardez votre personnalisation avant de décider de la remplacer.
 
+## Générer la clé
+
+La `pairing_key` est le secret partagé entre l’intégration Home Assistant et le module. L’intégration le présente pour lire les états et envoyer des commandes à l’alarme. L’empreinte SHA-256 du journal est publique et permet à l’intégration de vérifier le certificat du module.
+
+Générez la clé **une seule fois** et conservez-la dans votre gestionnaire de mots de passe. Vous pouvez utiliser son générateur avec 32 à 128 caractères parmi `A–Z`, `a–z`, `0–9`, `-` et `_`. Sur Windows, ce bloc PowerShell génère une clé de 64 caractères à partir de 32 octets aléatoires.
+
+```powershell
+$octets = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($octets)
+$rng.Dispose()
+[BitConverter]::ToString($octets).Replace('-', '').ToLowerInvariant()
+```
+
 ## Connecter eufy depuis Home Assistant
 
 1. Ouvrez Home Assistant via **HTTPS** avant de saisir vos identifiants. Le navigateur utilise la connexion de votre installation Home Assistant.
-2. Dans **Paramètres → Appareils et services → Ajouter une intégration**, recherchez **Passerelle eufy locale**. Saisissez la clé d’appairage et l’empreinte du journal.
-3. Dans le formulaire suivant, saisissez votre adresse e-mail eufy, le mot de passe et le code pays du compte (par exemple `FR`). Terminez le captcha ou le code de vérification si eufy en demande un. Si le formulaire vous invite à patienter, validez de nouveau après quelques secondes.
+2. Dans **Paramètres → Appareils et services → Ajouter une intégration**, recherchez **Passerelle eufy locale**. Collez **la même clé** que dans la configuration du module dans le champ de la clé d’appairage. Dans le champ SHA-256, collez l’empreinte copiée depuis le journal.
+3. Saisissez votre adresse e-mail eufy, votre mot de passe et le code pays du compte (par exemple `FR`). Laissez la fenêtre ouverte. Home Assistant termine l’appairage automatiquement ou affiche le captcha ou le code de vérification demandé par eufy. Si l’attente atteint 90 secondes, le formulaire de connexion réapparaît avec un message. Vérifiez alors l’accès Internet de la VM et le pays du compte avant de réessayer.
 4. Sous **Entités**, recherchez **Alarme T9000** et **Eufy batterie**. Vérifiez un pourcentage et le mode actif de la base. Les actions natives `alarm_control_panel.alarm_arm_home`, `alarm_control_panel.alarm_arm_away` et `alarm_control_panel.alarm_disarm` sont disponibles selon les modes annoncés par la base. L’affichage change quand la base confirme le mode. Le direct s’ouvre à la demande pour les caméras compatibles. Les entités vidéo des caméras sur batterie sont désactivées par défaut pour éviter les réveils dus aux vignettes.
 
 Les composants qui signalent une ouverture ou un mouvement fournissent aussi des capteurs binaires dans Home Assistant. Ils deviennent indisponibles si la liaison avec la base est perdue.

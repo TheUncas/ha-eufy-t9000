@@ -5,62 +5,41 @@ from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
 )
-from homeassistant.core import callback
-from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN
+from . import DOMAIN, RTC_CONNECTION_ERRORS
+from .guard_mode import HomeBaseModeEntity, watch_homebase
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    _watch_alarm(hass.data[DOMAIN], async_add_entities)
+    watch_homebase(hass.data[DOMAIN], async_add_entities, HomeBaseAlarm)
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    entry.async_on_unload(_watch_alarm(entry.runtime_data, async_add_entities))
+    entry.async_on_unload(watch_homebase(entry.runtime_data, async_add_entities, HomeBaseAlarm))
 
 
-@callback
-def _watch_alarm(coordinator, async_add_entities):
-    known = set()
-
-    @callback
-    def discover():
-        station = (coordinator.data or {}).get("station") or {}
-        serial = station.get("id")
-        if serial and station.get("model") == "T9000" and serial not in known:
-            known.add(serial)
-            async_add_entities([HomeBaseAlarm(coordinator, serial)])
-
-    return coordinator.async_watch_inventory(discover)
-
-
-class HomeBaseAlarm(CoordinatorEntity, AlarmControlPanelEntity):
+class HomeBaseAlarm(HomeBaseModeEntity, AlarmControlPanelEntity):
     """A command may reconnect the base; only a live report confirms its mode."""
 
     _attr_name = "Alarme T9000"
     _attr_code_arm_required = False
 
     def __init__(self, coordinator, serial):
-        super().__init__(coordinator)
-        self._serial = serial
+        super().__init__(coordinator, serial)
+        # Keep the original default entity ID when associating the alarm with its device.
+        self.entity_id = "alarm_control_panel.alarme_t9000"
         self._attr_unique_id = f"eufy_bridge_alarm_{serial}"
 
     @property
-    def _station(self):
-        station = (self.coordinator.data or {}).get("station") or {}
-        return station if station.get("id") == self._serial else {}
-
-    @property
-    def _modes(self):
-        return self._station.get("settings", {}).get("guardMode", {}).get("states", {})
-
-    @property
-    def available(self):
-        data = self.coordinator.data or {}
-        return bool(super().available and data.get("connected") and
-                    data.get("auth", {}).get("status") == "connected" and
-                    any(mode in self._modes for mode in ("0", "1", "63")))
+    def extra_state_attributes(self):
+        station = self._station
+        online = station.get("online") if self.coordinator.last_update_success else None
+        attributes = {"configured_guard_mode": self._configured_option,
+                      "homebase_online": online if type(online) is bool else None}
+        reason = station.get("connectionIssue")
+        if online is False and isinstance(reason, str) and reason in RTC_CONNECTION_ERRORS:
+            attributes["connection_issue"] = reason
+        return attributes
 
     @property
     def alarm_state(self):
@@ -79,22 +58,18 @@ class HomeBaseAlarm(CoordinatorEntity, AlarmControlPanelEntity):
             3: AlarmControlPanelState.ARMED_CUSTOM_BYPASS,
             4: AlarmControlPanelState.ARMED_CUSTOM_BYPASS,
             5: AlarmControlPanelState.ARMED_CUSTOM_BYPASS,
+            6: AlarmControlPanelState.DISARMED,
             63: AlarmControlPanelState.DISARMED,
         }.get(current)
 
     @property
     def supported_features(self):
         features = AlarmControlPanelEntityFeature(0)
-        if "0" in self._modes:
+        if 0 in self._modes:
             features |= AlarmControlPanelEntityFeature.ARM_AWAY
-        if "1" in self._modes:
+        if 1 in self._modes:
             features |= AlarmControlPanelEntityFeature.ARM_HOME
         return features
-
-    async def _set_mode(self, mode):
-        if not self.available or str(mode) not in self._modes:
-            raise HomeAssistantError("Ce mode de l’alarme est indisponible.")
-        await self.coordinator.async_set_mode(mode)
 
     async def async_alarm_arm_away(self, code=None):
         await self._set_mode(0)

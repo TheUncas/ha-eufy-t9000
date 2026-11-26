@@ -23,7 +23,9 @@
 !component/binary_sensor.py
 !component/camera.py
 !component/config_flow.py
+!component/guard_mode.py
 !component/manifest.json
+!component/select.py
 !component/sensor.py
 !component/strings.json
 !component/translations/en.json

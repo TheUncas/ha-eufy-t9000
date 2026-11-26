@@ -41,6 +41,35 @@ $rng.Dispose()
 
 Les composants qui signalent une ouverture ou un mouvement fournissent aussi des capteurs binaires dans Home Assistant. Ils deviennent indisponibles si la liaison avec la base est perdue.
 
+## Ouvrir tous les modes depuis la tuile Alarme
+
+Depuis la version 1.2.0, ouvrez l’entité **Mode de garde T9000** pour choisir parmi les modes que votre HomeBase annonce. Selon la base, vous y trouverez notamment les profils personnalisés, la programmation, le géorepérage et le désarmement. Les mêmes choix sont utilisables dans une automatisation avec l’action `select.select_option` et le nom exact affiché dans la liste.
+
+Pour afficher l’état de l’alarme et ouvrir la liste complète d’un appui, modifiez votre tableau de bord, ajoutez une carte **Manuel** et collez cette configuration. Si vous avez renommé vos entités, utilisez leurs identifiants dans les trois champs `entity`.
+
+```yaml
+type: tile
+entity: alarm_control_panel.alarme_t9000
+tap_action:
+  action: more-info
+  entity: select.mode_de_garde_t9000
+icon_tap_action:
+  action: more-info
+  entity: select.mode_de_garde_t9000
+```
+
+La tuile affiche l’état actif confirmé par la base. Le sélecteur affiche le dernier profil configuré signalé par eufy. Vous pouvez ainsi voir « Geofencing » dans le sélecteur et « Présent » sur la tuile. En l’absence de confirmation de l’état actif, la tuile peut afficher « Inconnu ».
+
+## Diagnostiquer une commande d’alarme en erreur 503
+
+Dans la version 1.1.1, le message HTTP 503 indique que Home Assistant a joint la passerelle. Il ne précise pas si la commande a atteint la HomeBase. Vérifiez son mode dans l’application eufy avant de renouveler la commande.
+
+À partir de la version 1.2.0, ouvrez **Outils de développement → États**, puis cherchez `alarm_control_panel.alarme_t9000`. L’attribut `homebase_online` indique si la passerelle a une liaison avec la base. Lorsqu’elle est hors ligne, `connection_issue` peut indiquer la dernière cause connue. Vous pouvez lire ces attributs sans actionner l’alarme. En cas d’échec, le journal du module peut aussi afficher le motif de la commande.
+
+- `no_lan_candidate` ou `ice_unavailable` indique un problème lors de l’établissement de la liaison locale. Sous VMware, vérifiez que la carte réseau de la VM est en mode pont sur le réseau de la **HomeBase**.
+- `signaling_unavailable` indique que le connecteur n’a pas pu joindre la signalisation eufy nécessaire à l’ouverture d’une nouvelle liaison. Vérifiez l’accès Internet de la VM.
+- `command_unconfirmed` indique que la passerelle a perdu la confirmation. Consultez l’état de la base avant de décider d’envoyer une autre commande.
+
 ## Session et redémarrage
 
 Le mot de passe sert à l’authentification auprès d’eufy. Le module persiste la session chiffrée et sa clé dans ses données privées. L’intégration conserve la clé d’appairage et l’empreinte publique. Protégez les sauvegardes Home Assistant qui contiennent ces données. Une session expirée ou révoquée demande une nouvelle authentification dans Home Assistant.

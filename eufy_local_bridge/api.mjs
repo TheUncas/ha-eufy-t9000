@@ -1,4 +1,5 @@
 import { accountStatus, body, changeGuardMode, fail, json, matches } from '../../http-api.mjs';
+import { publicAlarmFailureReason } from '../../adapter.mjs';
 
 export const port = 18787;
 
@@ -34,6 +35,13 @@ export function addonHandler({ token, adapter, login, loginStatus, video }) {
       if (res.headersSent || res.destroyed) return res.destroy();
       const status = Number.isInteger(error.status) && error.status >= 400 && error.status < 600 ? error.status : 500;
       // Driver errors may contain account or device details. Keep responses independent of input.
+      if (req.method === 'POST' && req.url === '/api/alarm' && (status === 503 || status === 504)) {
+        const reason = publicAlarmFailureReason(error.reason);
+        if (reason) {
+          console.warn('Commande d’alarme : ' + reason);
+          return json(res, status, { reason });
+        }
+      }
       json(res, status, { error: 'Requête non aboutie.' });
     }
   };

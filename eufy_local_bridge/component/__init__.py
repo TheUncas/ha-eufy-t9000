@@ -21,7 +21,42 @@ from .addon_client import ORIGIN
 
 DOMAIN = "eufy_local_bridge"
 _LOGGER = logging.getLogger(__name__)
-_ENTRY_PLATFORMS = (Platform.SENSOR, Platform.ALARM_CONTROL_PANEL, Platform.CAMERA, Platform.BINARY_SENSOR)
+_ENTRY_PLATFORMS = (Platform.SENSOR, Platform.ALARM_CONTROL_PANEL, Platform.SELECT, Platform.CAMERA, Platform.BINARY_SENSOR)
+RTC_CONNECTION_ERRORS = {
+    "sign_unauthorized": "eufy a refusé l’autorisation de la session. Vérifiez les droits de votre compte sur la HomeBase.",
+    "sign_refused": "eufy a refusé l’ouverture de la liaison. Vérifiez que ce compte voit la HomeBase dans eufy Security.",
+    "rtc_auth": "La liaison eufy n’a pas pu être authentifiée. Vérifiez que la session eufy du module est active.",
+    "peer_unavailable": "La HomeBase ne répond pas à la connexion sécurisée. Vérifiez son alimentation et sa connexion réseau.",
+    "region_unavailable": "Le service régional eufy est introuvable. Vérifiez le pays du compte et l’accès Internet du module.",
+    "signaling_unavailable": "Le service de signalisation eufy est indisponible. Vérifiez la connexion Internet du module.",
+    "hub_unreachable": "La HomeBase n’a pas répondu à la demande de liaison. Vérifiez qu’elle est en ligne dans eufy Security.",
+    "offer_unavailable": "La négociation de la liaison a expiré après la réponse de la HomeBase. Vérifiez sa connexion réseau.",
+    "answer_unavailable": "L’échange des paramètres de connexion avec la HomeBase a échoué. Vérifiez la connexion réseau de la base et du module.",
+    "ice_unavailable": "Le chemin réseau local vers la HomeBase est indisponible. Vérifiez que le module peut la joindre sur le LAN.",
+    "no_lan_candidate": "La HomeBase n’a proposé aucune adresse locale. Vérifiez que le module et la base peuvent communiquer sur le LAN.",
+    "secure_channel_unavailable": "Le canal sécurisé avec la HomeBase n’a pas pu s’ouvrir. Vérifiez la connectivité entre la base et le module.",
+}
+_BEFORE_SEND_ERRORS = {
+    **RTC_CONNECTION_ERRORS,
+    "connector_unavailable": "Le connecteur eufy est indisponible. Vérifiez son état dans le journal de la passerelle.",
+    "homebase_unavailable": "La passerelle ne trouve pas la HomeBase T9000. Vérifiez que le compte eufy a accès à cette base.",
+    "homebase_unreachable": "La HomeBase est injoignable. Vérifiez son alimentation et la liaison réseau avec la passerelle.",
+}
+_VERIFY_MODE = "Vérifiez le mode dans eufy Security avant de réessayer."
+_UNKNOWN_RESULT = "Résultat de la commande inconnu. " + _VERIFY_MODE
+
+
+async def _alarm_error(response):
+    try:
+        data = await response.json()
+    except (ClientError, ValueError, TimeoutError):
+        return _UNKNOWN_RESULT
+    reason = data.get("reason") if isinstance(data, dict) else None
+    if isinstance(reason, str) and reason in _BEFORE_SEND_ERRORS:
+        return "Commande non envoyée. " + _BEFORE_SEND_ERRORS[reason]
+    if reason == "command_unconfirmed":
+        return "La HomeBase n’a pas confirmé la commande. " + _VERIFY_MODE
+    return _UNKNOWN_RESULT
 
 
 def _local_ip(value):
@@ -77,10 +112,12 @@ class BridgeCoordinator(DataUpdateCoordinator):
             async with self._session.post(self._origin + "/api/alarm", headers=self._headers,
                                           ssl=self._tls, allow_redirects=False, json={"mode": mode},
                                           timeout=ClientTimeout(total=65)) as response:
+                if response.status in (503, 504):
+                    raise HomeAssistantError(await _alarm_error(response))
                 if response.status != 202:
                     raise HomeAssistantError(f"Commande refusée par la passerelle (HTTP {response.status}).")
-        except (ClientError, TimeoutError) as err:
-            raise HomeAssistantError("Résultat de la commande inconnu après l’erreur HTTPS.") from err
+        except (ClientError, TimeoutError):
+            raise HomeAssistantError(_UNKNOWN_RESULT) from None
         await self.async_request_refresh()
 
     @callback
@@ -121,7 +158,7 @@ async def async_setup(hass, config):
     hass.data[DOMAIN] = coordinator
     await coordinator.async_register_shutdown()
     await coordinator.async_refresh()
-    for platform in (Platform.SENSOR, Platform.ALARM_CONTROL_PANEL):
+    for platform in (Platform.SENSOR, Platform.ALARM_CONTROL_PANEL, Platform.SELECT):
         hass.async_create_task(discovery.async_load_platform(hass, platform, DOMAIN, {}, config))
     return True
 

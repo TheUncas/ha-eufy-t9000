@@ -14,7 +14,9 @@ Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou
 2. Installez **Eufy Local Bridge T9000**. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez et démarrez le module. Activez **Démarrer au démarrage**.
 3. Dans l’onglet **Journal**, vérifiez que le module a installé l’intégration et copiez l’empreinte publique SHA-256. **Redémarrez Home Assistant Core** pour charger l’intégration.
 4. Ouvrez Home Assistant en **HTTPS**. Dans **Paramètres → Appareils et services → Ajouter une intégration**, cherchez **Passerelle eufy locale**. Collez **la même clé** dans le champ de la clé d’appairage et l’empreinte du journal dans le champ SHA-256. Connectez ensuite votre compte eufy. Le formulaire prend en charge le captcha et le code de vérification.
-5. Ouvrez les entités **Alarme T9000** et **Eufy batterie** pour vérifier la première lecture. L’alarme affiche le mode confirmé par la base.
+5. Ouvrez **Mode de garde T9000** pour choisir parmi les profils annoncés par votre base, dont le géorepérage, la programmation et les profils personnalisés. **Alarme T9000** affiche l’état actif confirmé par la base. **Eufy batterie** indique la dernière mesure de chaque caméra sur batterie.
+
+Pour ouvrir tous les profils d’un appui sur la tuile **Alarme T9000**, copiez l’exemple de carte du guide. [Configurer la tuile](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#ouvrir-tous-les-modes-depuis-la-tuile-alarme)
 
 ## Générer la clé
 

@@ -3,11 +3,16 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const bad = (status, message) => Object.assign(new Error(message), { status, statusCode: status });
+const bad = (status, message, reason) => Object.assign(new Error(message), { status, statusCode: status, reason });
 const identity = new Set(['name', 'model', 'hardwareVersion', 'softwareVersion', 'type']);
 const rtcFailures = new Set(['sign_unauthorized', 'sign_refused', 'rtc_auth', 'peer_unavailable', 'region_unavailable',
   'signaling_unavailable', 'hub_unreachable', 'offer_unavailable', 'answer_unavailable', 'ice_unavailable', 'no_lan_candidate', 'secure_channel_unavailable']);
 const activeModes = new Set([0, 1, 3, 4, 5, 6, 63]);
+const alarmFailures = new Set([...rtcFailures, 'connector_unavailable', 'homebase_unavailable', 'homebase_unreachable',
+  'command_unconfirmed']);
+export function publicAlarmFailureReason(reason) {
+  return alarmFailures.has(reason) ? reason : undefined;
+}
 // Inventory values can predate this connection. Keep them separate from confirmed live state.
 function rememberReading(entry, name, value, metadata) {
   if (name === 'battery' && entry.kind === 'camera' && metadata?.readable !== false &&
@@ -410,7 +415,9 @@ export class EufyAdapter extends EventEmitter {
     const records = source === 'station' ? this.#stations : this.#devices;
     if (action === source + ' added') return this.#add(source, event[source]);
     if (action === source + ' removed') {
+      const selected = source === 'station' && this.#selected()?.id === event.station;
       records.delete(event[source]);
+      if (selected) this.emit('stationConnection');
       if (source === 'device') this.#endStream(event.device);
       else for (const [deviceId, record] of this.#devices) {
         if (record.parent === event.station) {
@@ -429,11 +436,14 @@ export class EufyAdapter extends EventEmitter {
     }
     const entry = record.entry;
     if (source === 'station' && ['connected', 'disconnected', 'connection error'].includes(action)) {
+      const wasOnline = entry.online;
       entry.online = action === 'connected';
       if (entry.online) delete entry.connectionIssue;
       else if (rtcFailures.has(event.reason)) entry.connectionIssue = event.reason;
       if (this.#selected()?.id === id) this.#updatedAt = null;
-      if (this.#selected() === entry) this.emit('stationConnection');
+      if (this.#selected() === entry && (entry.online !== wasOnline || action === 'connection error')) {
+        this.emit('stationConnection', rtcFailures.has(event.reason) ? event.reason : undefined);
+      }
       for (const r of [record, ...Array.from(this.#devices.values()).filter(d => d.parent === id && d.entry)]) {
         r.entry.properties = Object.fromEntries(Object.entries(r.entry.properties).filter(([k]) => identity.has(k)));
         r.entry.settings = readSettings(r.names);
@@ -524,7 +534,8 @@ export class EufyAdapter extends EventEmitter {
 
   async setGuardMode(mode, signal) {
     const station = this.#selected();
-    if (!this.#connected || !station) throw bad(503, 'HomeBase T9000 indisponible.');
+    if (!this.#connected) throw bad(503, 'Connecteur eufy indisponible.', 'connector_unavailable');
+    if (!station) throw bad(503, 'HomeBase T9000 indisponible.', 'homebase_unavailable');
     const setting = station.settings.guardMode;
     if (!Number.isSafeInteger(mode) || mode < 0 || !setting || !validateValue(setting, mode)) {
       throw bad(400, 'Le mode doit être une valeur sélectionnable.');
@@ -535,20 +546,33 @@ export class EufyAdapter extends EventEmitter {
     try {
       if (!station.online) {
         const failed = new AbortController();
-        const deadline = AbortSignal.timeout(45_000);
+        // The SDK starts its 45 s handshake timer after signaling; allow time for setup and the write.
+        const deadline = AbortSignal.timeout(50_000);
         const wait = AbortSignal.any(signal ? [signal, deadline, failed.signal] : [deadline, failed.signal]);
         const connected = once(this, 'stationConnection', { signal: wait });
         this.#request('station.connect', { serialNumber: station.id }).catch(error => {
           // The WS request times out before the SDK's RTC handshake can finish.
           if (error.status !== 504) failed.abort();
         });
-        try { await connected; } catch { /* Inspect the caller, deadline and station below. */ }
+        let reason;
+        try { [reason] = await connected; } catch { /* Inspect the caller, deadline and station below. */ }
         signal?.throwIfAborted();
-        if (wait.aborted || this.#selected() !== station || !station.online) {
-          throw bad(503, 'Connexion locale à la HomeBase impossible. Le changement de mode n’a pas été envoyé.');
+        if (!this.#connected) throw bad(503, 'Connexion au connecteur interrompue.', 'connector_unavailable');
+        if (this.#selected() !== station) throw bad(503, 'HomeBase T9000 indisponible.', 'homebase_unavailable');
+        if (wait.aborted || !station.online) {
+          throw bad(503, 'Connexion locale à la HomeBase impossible. Le changement de mode n’a pas été envoyé.',
+            reason ?? 'homebase_unreachable');
         }
       }
-      await this.#request('station.set_property', { serialNumber: station.id, name: 'guardMode', value: mode });
+      if (this.#socket?.readyState !== WebSocket.OPEN) {
+        throw bad(503, 'Connecteur eufy indisponible.', 'connector_unavailable');
+      }
+      try {
+        await this.#request('station.set_property', { serialNumber: station.id, name: 'guardMode', value: mode });
+      } catch (error) {
+        if (error.status === 503 || error.status === 504) error.reason = 'command_unconfirmed';
+        throw error;
+      }
       return { submitted: true };
     } finally {
       this.#changingGuardMode = false;

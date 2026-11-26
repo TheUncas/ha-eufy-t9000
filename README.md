@@ -20,3 +20,7 @@ Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou
 - Une batterie affiche la dernière mesure reçue. Les caméras PoE n’ont pas de pourcentage de batterie. Les entités vidéo sur batterie sont désactivées par défaut pour éviter les réveils automatiques liés aux vignettes.
 
 Les instructions de migration depuis une installation antérieure et le détail des entités figurent dans le guide du module. [Guide complet](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md)
+
+## Soutenir le projet
+
+Si ce module vous est utile, vous pouvez [m’offrir un café sur Buy Me a Coffee](https://buymeacoffee.com/theuncas).

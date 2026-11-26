@@ -12,21 +12,24 @@ from . import DOMAIN
 
 
 @callback
-def watch_homebase(coordinator, async_add_entities, entity_class):
+def watch_homebase(coordinator, async_add_entities, entity_class, *, supports=None):
     known = set()
 
     @callback
     def discover():
-        station = (coordinator.data or {}).get("station") or {}
+        data = coordinator.data or {}
+        station = data.get("station") or {}
         serial = station.get("id")
         if serial and station.get("model") == "T9000" and serial not in known:
+            if supports and not supports(data, serial):
+                return
             known.add(serial)
             async_add_entities([entity_class(coordinator, serial)])
 
     return coordinator.async_watch_inventory(discover)
 
 
-class HomeBaseModeEntity(CoordinatorEntity):
+class HomeBaseEntity(CoordinatorEntity):
     def __init__(self, coordinator, serial):
         super().__init__(coordinator)
         self._serial = serial
@@ -39,6 +42,8 @@ class HomeBaseModeEntity(CoordinatorEntity):
         station = (self.coordinator.data or {}).get("station") or {}
         return station if station.get("id") == self._serial else {}
 
+
+class HomeBaseModeEntity(HomeBaseEntity):
     @property
     def _modes(self):
         """Map writable mode IDs to unique options within HA's state length limit."""

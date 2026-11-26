@@ -62,6 +62,18 @@ La tuile affiche l’état actif confirmé par la base. Le sélecteur affiche le
 
 ## Diagnostiquer une commande d’alarme en erreur 503
 
+### Tester la liaison UDP depuis Home Assistant
+
+1. Après la mise à jour vers la version **1.3.0**, démarrez le module et redémarrez **Home Assistant Core** pour charger ses nouvelles entités.
+2. Ouvrez **Paramètres → Appareils et services → Passerelle eufy locale → HomeBase T9000**. Dans **Diagnostic**, appuyez sur **Tester la liaison UDP**. [Ouvrir l’intégration](https://my.home-assistant.io/redirect/integration/?domain=eufy_local_bridge)
+3. Consultez **Diagnostic UDP** sur la même fiche. Le module observe les échanges pendant **90 secondes**. Si la base est hors ligne, il demande une connexion locale au début du test. Le mode de l’alarme reste inchangé.
+
+Le capteur indique si des paquets circulent dans les deux sens, en sortie seulement, en entrée seulement, ou si aucun trafic n’a été observé. Ses attributs donnent les compteurs par interface et les heures du test. En cas d’échec, consultez l’attribut **Motif**. Un échange dans les deux sens confirme la circulation de paquets avec la base. L’attribut `homebase_online` de l’alarme indique si la liaison eufy a effectivement abouti.
+
+Le module utilise automatiquement l’IPv4 locale annoncée par la HomeBase. Avec l’autorisation Linux `NET_RAW`, la sonde compte les paquets UDP à destination ou en provenance de cette adresse en lisant leur en-tête IPv4. Aucun contenu de paquet n’est enregistré. Les compteurs du dernier test restent accessibles dans le module jusqu’au test suivant ou à son redémarrage.
+
+### Lire le motif d’une erreur
+
 Dans la version 1.1.1, le message HTTP 503 indique que Home Assistant a joint la passerelle. Il ne précise pas si la commande a atteint la HomeBase. Vérifiez son mode dans l’application eufy avant de renouveler la commande.
 
 À partir de la version 1.2.0, ouvrez **Outils de développement → États**, puis cherchez `alarm_control_panel.alarme_t9000`. L’attribut `homebase_online` indique si la passerelle a une liaison avec la base. Lorsqu’elle est hors ligne, `connection_issue` peut indiquer la dernière cause connue. Vous pouvez lire ces attributs sans actionner l’alarme. En cas d’échec, le journal du module peut aussi afficher le motif de la commande.

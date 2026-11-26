@@ -18,6 +18,8 @@ Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou
 
 Pour ouvrir tous les profils d’un appui sur la tuile **Alarme T9000**, copiez l’exemple de carte du guide. [Configurer la tuile](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#ouvrir-tous-les-modes-depuis-la-tuile-alarme)
 
+Si la HomeBase reste hors ligne, ouvrez sa fiche dans Home Assistant et appuyez sur **Tester la liaison UDP**. Le capteur **Diagnostic UDP** affiche le résultat au bout de 90 secondes. [Lire le résultat du test](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#tester-la-liaison-udp-depuis-home-assistant)
+
 ## Générer la clé
 
 La `pairing_key` est le secret partagé entre l’intégration Home Assistant et le module. L’intégration le présente pour lire les états et envoyer des commandes à l’alarme. L’empreinte SHA-256 du journal est publique et permet à l’intégration de vérifier le certificat du module.

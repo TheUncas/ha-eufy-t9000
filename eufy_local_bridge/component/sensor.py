@@ -6,6 +6,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DOMAIN
+from .guard_mode import watch_homebase
+from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, udp_report
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -14,6 +16,38 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 async def async_setup_entry(hass, entry, async_add_entities):
     entry.async_on_unload(_watch_batteries(entry.runtime_data, async_add_entities))
+    entry.async_on_unload(watch_homebase(entry.runtime_data, async_add_entities, UdpLinkResult, supports=udp_report))
+
+
+class UdpLinkResult(UdpDiagnosticEntity, SensorEntity):
+    _attr_translation_key = "udp_diagnostic"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = UDP_STATUSES
+    _attr_icon = "mdi:lan-connect"
+
+    def __init__(self, coordinator, serial):
+        super().__init__(coordinator, serial)
+        self._attr_unique_id = f"eufy_bridge_udp_result_{serial}"
+
+    @property
+    def native_value(self):
+        return self._report.get("status")
+
+    @property
+    def extra_state_attributes(self):
+        report = self._report
+        if not report:
+            return {}
+        interfaces = report.get("interfaces", [])
+        attributes = {
+            "sent_by_interface": {item["name"]: item["sent"] for item in interfaces},
+            "received_by_interface": {item["name"]: item["received"] for item in interfaces},
+            "started_at": report.get("startedAt"),
+            "finished_at": report.get("finishedAt"),
+        }
+        if report.get("reason") in ("address_unavailable", "capture_unavailable", "station_changed", "connection_unavailable"):
+            attributes["reason"] = report["reason"]
+        return attributes
 
 
 @callback

@@ -8,6 +8,7 @@ import { createEufyLogin, getLoginStatus } from '../../eufy-login.mjs';
 import { localCertificate } from '../../local-https.mjs';
 import { Video } from '../../video.mjs';
 import { addonHandler, port } from './api.mjs';
+import { UdpDiagnostic } from './udp-diagnostic.mjs';
 
 async function run() {
   process.umask(0o077);
@@ -54,9 +55,10 @@ async function run() {
   const driverPort = '18788';
   const adapter = new EufyAdapter({ url: 'ws://127.0.0.1:' + driverPort, stationSerial: '', credentialPath: ipc + '/driver.token' });
   const video = new Video(adapter, []);
+  const udpDiagnostic = new UdpDiagnostic(adapter);
   const server = https.createServer({
     cert: await readFile(cert.cert), key: await readFile(cert.key), minVersion: 'TLSv1.2'
-  }, addonHandler({ token, adapter, login: createEufyLogin({ dataDir: ipc }), loginStatus: () => getLoginStatus(ipc), video }));
+  }, addonHandler({ token, adapter, login: createEufyLogin({ dataDir: ipc }), loginStatus: () => getLoginStatus(ipc), video, udpDiagnostic }));
   server.listen(port, '127.0.0.1');
   await once(server, 'listening');
   const child = spawn(process.execPath, ['/opt/bridge/eufy-login.mjs'], {
@@ -73,6 +75,7 @@ async function run() {
   function stop() {
     if (stopping) return;
     stopping = true;
+    udpDiagnostic.close();
     video.close();
     adapter.stop();
     server.close();

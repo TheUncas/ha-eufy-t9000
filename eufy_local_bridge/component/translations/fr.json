@@ -1,4 +1,48 @@
 {
+  "entity": {
+    "button": {
+      "test_udp_link": {
+        "name": "Tester la liaison UDP"
+      }
+    },
+    "sensor": {
+      "udp_diagnostic": {
+        "name": "Diagnostic UDP",
+        "state": {
+          "idle": "Prêt à tester",
+          "running": "Observation du trafic UDP en cours",
+          "bidirectional": "Trafic dans les deux sens",
+          "outbound_only": "Trafic sortant uniquement",
+          "inbound_only": "Trafic entrant uniquement",
+          "no_traffic": "Aucun trafic UDP observé",
+          "error": "Échec du test"
+        },
+        "state_attributes": {
+          "sent_by_interface": {
+            "name": "Paquets envoyés à la HomeBase par interface"
+          },
+          "received_by_interface": {
+            "name": "Paquets reçus de la HomeBase par interface"
+          },
+          "started_at": {
+            "name": "Début du test"
+          },
+          "finished_at": {
+            "name": "Fin du test"
+          },
+          "reason": {
+            "name": "Motif",
+            "state": {
+              "address_unavailable": "Adresse réseau de la HomeBase indisponible",
+              "capture_unavailable": "Observation UDP indisponible",
+              "station_changed": "La HomeBase sélectionnée a changé",
+              "connection_unavailable": "La tentative de connexion n’a pas pu démarrer"
+            }
+          }
+        }
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

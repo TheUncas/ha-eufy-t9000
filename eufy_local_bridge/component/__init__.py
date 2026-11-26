@@ -21,7 +21,8 @@ from .addon_client import ORIGIN
 
 DOMAIN = "eufy_local_bridge"
 _LOGGER = logging.getLogger(__name__)
-_ENTRY_PLATFORMS = (Platform.SENSOR, Platform.ALARM_CONTROL_PANEL, Platform.SELECT, Platform.CAMERA, Platform.BINARY_SENSOR)
+_ENTRY_PLATFORMS = (Platform.SENSOR, Platform.ALARM_CONTROL_PANEL, Platform.SELECT, Platform.CAMERA,
+                    Platform.BINARY_SENSOR, Platform.BUTTON)
 RTC_CONNECTION_ERRORS = {
     "sign_unauthorized": "eufy a refusé l’autorisation de la session. Vérifiez les droits de votre compte sur la HomeBase.",
     "sign_refused": "eufy a refusé l’ouverture de la liaison. Vérifiez que ce compte voit la HomeBase dans eufy Security.",
@@ -118,6 +119,20 @@ class BridgeCoordinator(DataUpdateCoordinator):
                     raise HomeAssistantError(f"Commande refusée par la passerelle (HTTP {response.status}).")
         except (ClientError, TimeoutError):
             raise HomeAssistantError(_UNKNOWN_RESULT) from None
+        await self.async_request_refresh()
+
+    async def async_start_udp_diagnostic(self, serial):
+        if self.config_entry is None:
+            raise HomeAssistantError("Le diagnostic UDP nécessite le module local appairé.")
+        try:
+            async with self._session.post(
+                self._origin + "/api/diagnostics/udp", headers=self._headers, json={"stationId": serial},
+                ssl=self._tls, allow_redirects=False, timeout=ClientTimeout(total=8),
+            ) as response:
+                if response.status != 202:
+                    raise HomeAssistantError(f"Diagnostic UDP refusé par le module (HTTP {response.status}).")
+        except (ClientError, TimeoutError):
+            raise HomeAssistantError("Impossible de confirmer le lancement du diagnostic UDP. Consultez son état.") from None
         await self.async_request_refresh()
 
     @callback

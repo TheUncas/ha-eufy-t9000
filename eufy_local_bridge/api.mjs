@@ -3,7 +3,7 @@ import { publicAlarmFailureReason } from '../../adapter.mjs';
 
 export const port = 18787;
 
-export function addonHandler({ token, adapter, login, loginStatus, video }) {
+export function addonHandler({ token, adapter, login, loginStatus, video, udpDiagnostic }) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -16,12 +16,18 @@ export function addonHandler({ token, adapter, login, loginStatus, video }) {
           const state = adapter.snapshot();
           const status = await accountStatus(state.auth, loginStatus);
           if (req.url === '/api/eufy/status') return json(res, 200, status);
-          return json(res, 200, { ...state, auth: { status: status.status } });
+          return json(res, 200, { ...state, auth: { status: status.status }, udpDiagnostic: udpDiagnostic?.snapshot() });
         }
         const camera = /^\/api\/cameras\/([a-zA-Z0-9_-]{1,128})\/live$/.exec(req.url);
         if (camera) return video.view(camera[1], res);
       }
       if (req.method === 'POST') {
+        if (req.url === '/api/diagnostics/udp' && udpDiagnostic) {
+          const input = await body(req);
+          if (Object.keys(input).length !== 1 || typeof input.stationId !== 'string') fail(400, 'Base requise.');
+          udpDiagnostic.start(input.stationId);
+          return json(res, 202, { status: 'accepted' });
+        }
         if (req.url === '/api/alarm') return await changeGuardMode(adapter, req, res, (await body(req)).mode);
         if (req.url === '/api/eufy/login' || req.url === '/api/eufy/challenge') {
           const input = await body(req);

@@ -8,6 +8,8 @@
 !api.mjs
 !run.mjs
 !install-component.mjs
+!udp-diagnostic.mjs
+!udp-probe.c
 !connector-amd64.tar.gz
 !connector-amd64.tar.gz.sha256
 !runtime/adapter.mjs
@@ -21,6 +23,7 @@
 !component/addon_client.py
 !component/alarm_control_panel.py
 !component/binary_sensor.py
+!component/button.py
 !component/camera.py
 !component/config_flow.py
 !component/guard_mode.py
@@ -30,3 +33,4 @@
 !component/strings.json
 !component/translations/en.json
 !component/translations/fr.json
+!component/udp_diagnostic.py

@@ -1,6 +1,7 @@
 import { EventEmitter, once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { isIPv4 } from 'node:net';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const bad = (status, message, reason) => Object.assign(new Error(message), { status, statusCode: status, reason });
@@ -99,6 +100,11 @@ const deviceReports = {
 };
 
 const driverProtocol = 'eufy-bridge-v1';
+
+function diagnosticTarget(id, ip) {
+  const address = isIPv4(ip) && /^(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(ip) ? ip : null;
+  return Object.freeze({ id, address });
+}
 
 async function privateProtocols(path) {
   try {
@@ -246,6 +252,7 @@ export class EufyAdapter extends EventEmitter {
     this.#stations.clear();
     this.#devices.clear();
     this.#connected = false;
+    this.emit('udpTargetChanged');
     this.emit('stationConnection');
     this.#auth = { status: 'offline' };
     this.#captchaId = undefined;
@@ -302,6 +309,7 @@ export class EufyAdapter extends EventEmitter {
     if (records.has(id)) return;
     const record = { queued: [] };
     records.set(id, record);
+    if (target === 'station') this.emit('udpTargetChanged');
     const fields = { serialNumber: id };
     this.#request(target + '.get_properties', fields).then(async values => {
       if (records.get(id) !== record) return;
@@ -324,6 +332,7 @@ export class EufyAdapter extends EventEmitter {
         properties, reported: {}, settings: readSettings(record.names),
       };
       if (target === 'station') {
+        record.udpTarget = diagnosticTarget(id, props.lanIpAddress);
         record.entry.online = status.connected === true;
         record.verifiesMode = Object.hasOwn(status, 'confirmedMode');
         this.#readConfirmedMode(record.entry, status.confirmedMode);
@@ -408,6 +417,7 @@ export class EufyAdapter extends EventEmitter {
           this.#inventory(socket).catch(() => this.#disconnect(socket));
         }
       }
+      this.emit('udpTargetChanged');
       return;
     }
     if (source === 'server' && action === 'shutdown') return this.#disconnect(this.#socket);
@@ -417,6 +427,7 @@ export class EufyAdapter extends EventEmitter {
     if (action === source + ' removed') {
       const selected = source === 'station' && this.#selected()?.id === event.station;
       records.delete(event[source]);
+      if (source === 'station') this.emit('udpTargetChanged');
       if (selected) this.emit('stationConnection');
       if (source === 'device') this.#endStream(event.device);
       else for (const [deviceId, record] of this.#devices) {
@@ -435,6 +446,14 @@ export class EufyAdapter extends EventEmitter {
       return;
     }
     const entry = record.entry;
+    if (source === 'station' && action === 'property changed' && event.name === 'lanIpAddress') {
+      const target = diagnosticTarget(id, event.value);
+      if (record.udpTarget.address !== target.address) {
+        record.udpTarget = target;
+        this.emit('udpTargetChanged');
+      }
+      return;
+    }
     if (source === 'station' && ['connected', 'disconnected', 'connection error'].includes(action)) {
       const wasOnline = entry.online;
       entry.online = action === 'connected';
@@ -505,6 +524,18 @@ export class EufyAdapter extends EventEmitter {
       .filter(record => record.parent === station.id && record.entry)
       .map(record => record.entry) : [];
     return structuredClone({ connected: this.#connected, station, devices, auth: this.#auth, updatedAt: this.#updatedAt });
+  }
+
+  // Keep the capture address outside the public inventory. Its identity changes
+  // when discovery replaces the station or reports a different address.
+  get udpDiagnosticTarget() {
+    if (!this.#connected || this.#auth.status !== 'connected') return null;
+    return this.#stations.get(this.#selected()?.id)?.udpTarget ?? null;
+  }
+
+  async connectForUdpDiagnostic(target) {
+    if (!target || target !== this.udpDiagnosticTarget) throw bad(409, 'La HomeBase sélectionnée a changé.');
+    if (!this.#selected().online) await this.#request('station.connect', { serialNumber: target.id });
   }
 
   #entry(target, id) {

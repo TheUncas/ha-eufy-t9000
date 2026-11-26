@@ -42,6 +42,9 @@
           "stun_errors_received": {
             "name": "Réponses d’erreur STUN reçues de la HomeBase"
           },
+          "ice_attempts": {
+            "name": "Tentatives ICE expirées pendant le test"
+          },
           "started_at": {
             "name": "Début du test"
           },

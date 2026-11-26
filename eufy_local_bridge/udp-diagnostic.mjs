@@ -31,7 +31,20 @@ export class UdpDiagnostic {
     this.#adapter = adapter;
     this.#spawn = spawnProbe;
     adapter.on('udpTargetChanged', this.#checkTarget);
+    adapter.on('iceAttempt', this.#recordIceAttempt);
   }
+
+  #recordIceAttempt = (stationId, reason, attempt) => {
+    const run = this.#active;
+    if (!run?.readyAt || run.target !== this.#adapter.udpDiagnosticTarget || stationId !== run.target.id) return;
+    // The adapter emits sanitized reports from both live events and periodic status polls.
+    const { finishedAt } = attempt;
+    if (finishedAt < run.readyAt || finishedAt > (run.countersAt ?? new Date().toISOString()) ||
+        run.iceAttempts.some(row => row.finishedAt === finishedAt)) return;
+    run.iceAttempts.push({ ...attempt, reason });
+    run.iceAttempts.sort((a, b) => a.finishedAt.localeCompare(b.finishedAt));
+    if (run.iceAttempts.length > 4) run.iceAttempts.shift();
+  };
 
   #checkTarget = () => {
     if (this.#active && this.#active.target !== this.#adapter.udpDiagnosticTarget) this.#abort('station_changed');
@@ -65,8 +78,7 @@ export class UdpDiagnostic {
       this.#result = { ...this.#result, status: 'error', reason: 'capture_unavailable', finishedAt: startedAt };
       return;
     }
-    const run = this.#active = { target, child };
-    let ready = false;
+    const run = this.#active = { target, child, iceAttempts: [] };
     let interfaces;
     let stun;
     let connectionRefused = false;
@@ -77,17 +89,18 @@ export class UdpDiagnostic {
       if (run !== this.#active) return;
       try {
         const message = JSON.parse(line);
-        if (!ready) {
+        if (!run.readyAt) {
           if (message?.ready !== true) throw Error();
           this.#checkTarget();
           if (run !== this.#active) return;
-          ready = true;
+          run.readyAt = new Date().toISOString();
           this.#adapter.connectForUdpDiagnostic(target).catch(error => {
             // A WS acknowledgement may time out before the RTC handshake finishes.
             connectionRefused = error.status !== 504;
           });
         } else {
           if (interfaces) throw Error();
+          run.countersAt = new Date().toISOString();
           interfaces = counters(message.interfaces);
           if (message.stun !== undefined) {
             stun = {};
@@ -111,7 +124,7 @@ export class UdpDiagnostic {
       if (run !== this.#active) return;
       this.#active = undefined;
       let status = 'error', reason = null;
-      if (code !== 0 || !ready || !interfaces) reason = 'capture_unavailable';
+      if (code !== 0 || !run.readyAt || !interfaces) reason = 'capture_unavailable';
       else {
         const sent = interfaces.some(row => row.sent > 0);
         const received = interfaces.some(row => row.received > 0);
@@ -121,6 +134,7 @@ export class UdpDiagnostic {
         else status = 'no_traffic';
       }
       this.#result = { ...this.#result, status, interfaces: code === 0 ? (interfaces ?? []) : [],
+        ...(status !== 'error' ? { iceAttempts: run.iceAttempts } : {}),
         ...(status !== 'error' && stun ? { stun } : {}),
         reason, finishedAt: new Date().toISOString() };
     });
@@ -136,6 +150,7 @@ export class UdpDiagnostic {
   close() {
     this.#closed = true;
     this.#adapter.off('udpTargetChanged', this.#checkTarget);
+    this.#adapter.off('iceAttempt', this.#recordIceAttempt);
     if (this.#active) this.#abort('capture_unavailable');
   }
 }

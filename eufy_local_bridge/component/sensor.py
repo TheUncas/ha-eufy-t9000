@@ -7,7 +7,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DOMAIN
 from .guard_mode import watch_homebase
-from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, udp_report
+from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, udp_report, window_ice_attempts
 
 STUN_ATTRIBUTES = {
     "stun_requests_sent": "requestsSent",
@@ -55,6 +55,9 @@ class UdpLinkResult(UdpDiagnosticEntity, SensorEntity):
             "finished_at": report.get("finishedAt"),
         }
         if report.get("status") in ("bidirectional", "outbound_only", "inbound_only", "no_traffic"):
+            attempts = window_ice_attempts(report.get("iceAttempts"))
+            if attempts is not None:
+                attributes["ice_attempts"] = attempts
             stun = report.get("stun")
             if isinstance(stun, dict) and all(type(stun.get(key)) is int and stun[key] >= 0
                                               for key in STUN_ATTRIBUTES.values()):

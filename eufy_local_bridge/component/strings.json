@@ -42,6 +42,9 @@
           "stun_errors_received": {
             "name": "STUN Binding error responses received from the HomeBase"
           },
+          "ice_attempts": {
+            "name": "ICE attempts that timed out during the test"
+          },
           "started_at": {
             "name": "Started at"
           },

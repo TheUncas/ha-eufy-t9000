@@ -11,6 +11,24 @@ Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS 
 3. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
 4. **Redémarrez Home Assistant Core** lorsque le journal le demande. Le module installe les fichiers dans `custom_components/eufy_local_bridge` et indique les mises à jour qui nécessitent un nouveau redémarrage.
 
+### Localiser un échec ICE avec la version 1.3.5
+
+Mettez le module à jour, démarrez-le et redémarrez **Home Assistant Core**. Sur la fiche **HomeBase T9000**, appuyez une fois sur **Tester la liaison UDP**. Ce bouton peut ouvrir une session avec la base sans lui envoyer de commande d’alarme.
+
+Au bout de 90 secondes, ouvrez **Outils de développement → États** et sélectionnez `sensor.homebase_t9000_diagnostic_udp`. L’attribut `ice_attempts` conserve, dans l’ordre chronologique, jusqu’à quatre tentatives dont le connecteur a signalé l’expiration pendant la capture. Une reconnexion ultérieure ne remplace pas ce résultat. Une liste vide signifie qu’aucune expiration accompagnée d’un rapport ICE n’a été observée dans cette fenêtre. Consultez aussi `homebase_online` sur **Alarme T9000** pour connaître l’état actuel.
+
+| Dans une même entrée de `ice_attempts` | Comment la lire |
+|---|---|
+| `reason: offer_unavailable` | La tentative a expiré en attendant l’offre de session. |
+| `local_udp_matches_route: false` | Parmi les adresses candidates locales annoncées, aucune ne correspond à l’IPv4 que le système utiliserait pour joindre la base. Sur une VM à plusieurs interfaces, vérifiez l’interface et l’adresse source de la route vers la HomeBase. |
+| `remote_udp_matches_station: false` | Le moteur a reçu un candidat UDP distant, mais aucun des candidats observés ne correspond à l’IPv4 LAN déclarée par la HomeBase. Vérifiez l’adresse de la **base** dans les baux DHCP. |
+| `ice_checking_seen: true` et `pair_seen: false` | Le moteur ICE a commencé les vérifications sans que le connecteur observe une paire sélectionnée. `ice_failed_seen: true` signale un échec explicite du moteur, même si l’état final est `closed`. |
+| `ice_connected: true` ou `pair_seen: true` | Le connecteur a observé une connexion ICE ou une paire sélectionnée pendant cet essai. Le champ `reason` précise à quelle étape la tentative a ensuite expiré. |
+
+Les comparaisons d’adresses portent sur les candidats UDP/IPv4 de type *host*. Un indicateur de comparaison absent signifie que les éléments nécessaires manquent. Deux correspondances à `true` confirment que les adresses attendues figuraient parmi les candidats. La sélection de la paire reste une étape distincte. Les compteurs STUN couvrent toute la capture et peuvent inclure d’autres tentatives. [Vérification et sélection des paires ICE](https://www.rfc-editor.org/rfc/rfc8445.html#section-8.1.1)
+
+Pour partager le diagnostic, copiez uniquement `ice_attempts`. Ce champ contient des horaires, des états et des indicateurs booléens. Les comparaisons d’adresses s’effectuent localement.
+
 ### Mettre à jour vers la version 1.3.4
 
 Installez la mise à jour dans la boutique, démarrez le module, puis redémarrez **Home Assistant Core** pour charger l’intégration mise à jour.
@@ -106,7 +124,7 @@ La version **1.3.3** corrige un cas où l’expiration d’une ancienne tentativ
 | `ice_state` | État natif à l’expiration, par exemple `checking`, `failed` ou `completed`. |
 | `ice_connected` / `pair_seen` | Le moteur a signalé une connexion ICE / le connecteur a observé une paire sélectionnée au moins une fois pendant cette tentative. |
 
-Avec `ice_unavailable` et les deux derniers indicateurs à `false`, aucune paire utilisable n’a été observée pour cet essai, même si des réponses STUN ont circulé. `ice_path_lost` indique qu’un chemin avait été observé puis perdu à l’expiration. `secure_channel_unavailable` situe le blocage après un indice de connectivité ICE. Avec `command_channel_unavailable`, le transport était connecté à l’expiration mais le canal de commande eufy n’était pas prêt. Le rapport contient uniquement l’heure, l’état et quatre indicateurs booléens.
+Avec `ice_unavailable` et les deux derniers indicateurs à `false`, aucune paire utilisable n’a été observée pour cet essai, même si des réponses STUN ont circulé. `ice_path_lost` indique qu’un chemin avait été observé puis perdu à l’expiration. `secure_channel_unavailable` situe le blocage après un indice de connectivité ICE. Avec `command_channel_unavailable`, le transport était connecté à l’expiration mais le canal de commande eufy n’était pas prêt.
 
 ### Lire le motif d’une erreur
 

@@ -23,6 +23,8 @@ patch(client + 'rtc/stationRtcTransport.js', (replace, source) => {
   if (!method?.[0].includes('this.wirePrimarySession(session);')) throw Error('Unexpected RTC connect method');
   replace('"use strict";', '"use strict";\n' + observation + '\nconst connectPrimary = require("./bridge-ha-rtc-connect.cjs");');
   replace(method[0], '    async connect() {\n        return connectPrimary.call(this, observe.timeoutFailure);\n    }\n');
+  replace('wirePrimarySession(session) {',
+    'wirePrimarySession(session) {\n        session.peer.bridgeStationAddress = this.bridgeStationAddress;');
   replace('session.on("connected", () => {\n            if (this.connected)', 'session.on("connected", () => {\n            if (this.session !== session || this.connected)');
   replace('const wasConnected = this.connected;\n            this.connected = false;',
     'if (this.connecting && !this.connected && connectPrimary.canFinishDirect(session)) return;\n            const wasConnected = this.connected;\n            this.connected = false;');
@@ -36,7 +38,7 @@ patch(client + 'rtc/stationRtcTransport.js', (replace, source) => {
 patch(client + 'rtc/rtcPeer.js', replace => {
   replace('"use strict";', '"use strict";\n' + observation);
   const create = 'this.pc = new node_datachannel_1.PeerConnection("eufy-ha", rtcConfig);';
-  replace(create, create + '\n        const observedPc = this.pc;\n        observe.begin(observedPc);');
+  replace(create, create + '\n        const observedPc = this.pc;\n        observe.begin(observedPc, this.bridgeStationAddress);');
   for (const callback of ['onLocalDescription((sdp, type)', 'onLocalCandidate((candidate, mid)',
     'onGatheringStateChange((state)', 'onStateChange((state)', 'onIceStateChange((state)', 'onDataChannel((dc)']) {
     const start = 'this.pc.' + callback + ' => {';
@@ -89,6 +91,8 @@ patch(client + 'rtc/rtcSession.js', replace => {
 });
 
 patch(client + 'http/station.js', replace => {
+  const connected = 'this.rtcTransport.on("connected", () => this.onRtcConnect());';
+  replace(connected, 'this.rtcTransport.bridgeStationAddress = () => this.getLANIPAddress();\n            ' + connected);
   replace('this.bridgeRtcFailure = undefined;', 'this.bridgeRtcFailure = undefined;\n        this.bridgeIceAttempt = undefined;');
   replace('onRtcConnectFailed(error) {', 'onRtcConnectFailed(error) {\n        this.bridgeIceAttempt = error.bridgeIceAttempt;');
 });

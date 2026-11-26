@@ -70,8 +70,12 @@ patch(client + 'rtc/rtcSession.js', replace => {
   }
   replace('this.peer.close();\n            this.bridgeEarlyHosts.clear();',
     'this.peer.close();\n            this.bridgeAnswerSent = false;\n            this.bridgeEarlyHosts.clear();');
-  const end = 'else this.signaling.sendInfoEndOfCandidates(this.channelId);';
-  replace(end, end + '\n        if (candidate) observe.localAnnounced(this.peer.pc, candidate);');
+  // The SDK sends station SDP on channel 0 and trickle on 1. Camera sessions specify their channel.
+  const candidate = 'if (candidate) this.signaling.sendInfoCandidate(candidate.trim().replace(/^a=/, ""), this.channelId);';
+  replace(candidate, 'const trickleChannel = this.opts.channelId ?? 1;\n        ' +
+    candidate.replace('this.channelId', 'trickleChannel'));
+  replace('else this.signaling.sendInfoEndOfCandidates(this.channelId);',
+    'else this.signaling.sendInfoEndOfCandidates(trickleChannel);\n        if (candidate) observe.localAnnounced(this.peer.pc, candidate);');
   const offer = 'const offerSdp = await this.peer.createOffer();';
   replace(offer, 'const offerPc = this.peer.pc;\n            ' + offer);
   replace('if (this.closed || this.sdpHandled) {', 'if (this.closed || this.sdpHandled || this.peer.pc !== offerPc) {');

@@ -11,6 +11,13 @@ Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS 
 3. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
 4. **Redémarrez Home Assistant Core** lorsque le journal le demande. Le module installe les fichiers dans `custom_components/eufy_local_bridge` et indique les mises à jour qui nécessitent un nouveau redémarrage.
 
+### Mettre à jour vers la version 1.3.4
+
+Installez la mise à jour dans la boutique, démarrez le module, puis redémarrez **Home Assistant Core** pour charger l’intégration mise à jour.
+
+- Pour ouvrir une session avec la HomeBase, le module envoie la réponse de session (SDP) sur le canal de signalisation 0 et les candidats ICE transmis séparément sur le canal 1. Pour vérifier la liaison sans commander l’alarme, appuyez sur **Tester la liaison UDP**. Après les 90 secondes du test, ouvrez **Alarme T9000**. L’attribut `homebase_online` indique si la session est ouverte. S’il vaut `false`, consultez `connection_issue`.
+- Si deux changements de mode se chevauchent, Home Assistant indique désormais que le premier est encore en cours (HTTP 409). La passerelle écarte la seconde demande. Attendez le résultat de la première et vérifiez le mode actif dans **Alarme T9000** ou, si son état reste **Inconnu**, dans eufy Security avant de relancer une action.
+
 ### Si vous utilisiez déjà une version précédente
 
 - **Fenêtre « En attente d’eufy » de la version 1.1.0** — Fermez cette fenêtre. Après la mise à jour du module vers la version 1.1.1, démarrez-le, vérifiez dans son journal que l’intégration a été mise à jour, puis redémarrez Home Assistant Core. Relancez l’appairage dans **Appareils et services** avec votre clé et l’empreinte du journal.

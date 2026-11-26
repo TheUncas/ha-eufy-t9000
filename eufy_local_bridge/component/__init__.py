@@ -115,6 +115,9 @@ class BridgeCoordinator(DataUpdateCoordinator):
             async with self._session.post(self._origin + "/api/alarm", headers=self._headers,
                                           ssl=self._tls, allow_redirects=False, json={"mode": mode},
                                           timeout=ClientTimeout(total=65)) as response:
+                if response.status == 409:
+                    raise HomeAssistantError("Un changement de mode est déjà en cours. Cette nouvelle demande a été écartée. "
+                                             "Attendez le résultat de la première commande.")
                 if response.status in (503, 504):
                     raise HomeAssistantError(await _alarm_error(response))
                 if response.status != 202:

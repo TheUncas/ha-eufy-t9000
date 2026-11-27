@@ -5,9 +5,9 @@ from homeassistant.const import PERCENTAGE
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN
+from . import DOMAIN, RTC_CONNECTION_ERRORS
 from .guard_mode import watch_homebase
-from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, udp_report, window_ice_attempts
+from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, ice_attempt, udp_report, window_ice_attempts
 
 STUN_ATTRIBUTES = {
     "stun_requests_sent": "requestsSent",
@@ -54,6 +54,19 @@ class UdpLinkResult(UdpDiagnosticEntity, SensorEntity):
             "started_at": report.get("startedAt"),
             "finished_at": report.get("finishedAt"),
         }
+        trial = report.get("windowsLanTrial")
+        if isinstance(trial, dict) and trial.get("status") in (
+            "running", "connected", "failed", "skipped_online", "busy", "error", "inconclusive"
+        ):
+            attributes["windows_lan_trial"] = trial["status"]
+            reason = trial.get("reason")
+            if isinstance(reason, str) and (reason in RTC_CONNECTION_ERRORS or reason in (
+                "route_unavailable", "pair_mismatch", "pair_unverified", "trial_timeout", "trial_unavailable"
+            )):
+                attributes["windows_lan_trial_reason"] = reason
+            observed = ice_attempt(trial.get("iceAttempt"))
+            if observed is not None:
+                attributes["windows_lan_ice_attempt"] = observed
         if report.get("status") in ("bidirectional", "outbound_only", "inbound_only", "no_traffic"):
             attempts = window_ice_attempts(report.get("iceAttempts"))
             if attempts is not None:

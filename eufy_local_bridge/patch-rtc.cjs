@@ -67,6 +67,15 @@ patch(client + 'rtc/rtcPeer.js', replace => {
 
 patch(client + 'rtc/rtcSession.js', replace => {
   replace('"use strict";', '"use strict";\n' + observation);
+  replace('this.peer.bridgeWindows = require("./bridge-windows-lan.cjs").openWindowsLan(',
+    'this.peer.bridgeWindows = this.bridgeTrialLan ?? require("./bridge-windows-lan.cjs").openWindowsLan(');
+  replace('async bridgeReceiveCandidate(candidate) {', `async bridgeReceiveCandidate(candidate) {
+        if (this.bridgeTrialLan && !this.peer.pc) {
+            candidate = this.bridgeTrialLan.remote(candidate);
+            if (!candidate) return;
+        }`);
+  replace('if (status === 100 && payload.turn) {',
+    'if (status === 100 && payload.turn) {\n            if (this.bridgeTrialLan && this.peer.pc) return;');
   for (const wait of ['this.signaling.fetchSign()', 'this.signaling.connect()', 'this.waitForAuth()']) {
     replace('await ' + wait + ';', 'await ' + wait + ';\n        if (this.closed) return;');
   }
@@ -87,16 +96,28 @@ patch(client + 'rtc/rtcSession.js', replace => {
   replace(answer, 'const answerPc = this.peer.pc;\n            ' + answer);
   replace('const scallJson = this.peer.getCommandChannelScallJson(sendSdp);',
     'if (this.closed || this.peer.pc !== answerPc) return;\n            const scallJson = this.peer.getCommandChannelScallJson(sendSdp);');
-  replace('this.bridgeAnswerSent = true;', 'this.bridgeAnswerSent = true;\n            observe.localAnnounced(answerPc, sendSdp);');
+  replace('this.bridgeAnswerSent = true;', 'this.bridgeAnswerSent = true;\n            observe.localAnnounced(answerPc, this.bridgeTrialLan ? this.bridgeTrialLan.localSdp(sendSdp) : sendSdp);');
+});
+
+patch(client + 'rtc/rtcSignaling.js', replace => {
+  replace('const res = await fetch(url, {', 'const res = await fetch(url, {\n            signal: this.bridgeTrialSignal,');
 });
 
 patch(client + 'http/station.js', replace => {
+  replace('    async connectRtc() {', `    bridgeTestLanPath() {
+        return require("../rtc/rtc-trial-runner.cjs")(this, stationRtcTransport_1.StationRtcTransport,
+            require("../rtc/bridge-ha-rtc-observe.cjs").timeoutFailure);
+    }
+    async connectRtc() {`);
   const connected = 'this.rtcTransport.on("connected", () => this.onRtcConnect());';
   replace(connected, 'this.rtcTransport.bridgeStationAddress = () => this.getLANIPAddress();\n            ' + connected);
   replace('this.bridgeRtcFailure = undefined;', 'this.bridgeRtcFailure = undefined;\n        this.bridgeIceAttempt = undefined;');
   replace('onRtcConnectFailed(error) {', 'onRtcConnectFailed(error) {\n        this.bridgeIceAttempt = error.bridgeIceAttempt;');
 });
 for (const file of ['forward.js', 'station/message_handler.js']) {
-  patch(ws + file, replace => replace('reason: station.bridgeRtcFailure,',
-    'reason: station.bridgeRtcFailure, iceAttempt: station.bridgeIceAttempt,'));
+  patch(ws + file, replace => {
+    replace('reason: station.bridgeRtcFailure,', 'reason: station.bridgeRtcFailure, iceAttempt: station.bridgeIceAttempt,');
+    if (file === 'station/message_handler.js')
+      replace('case StationCommand.isConnected: {', 'case "station.test_lan_path":\n                return station.bridgeTestLanPath();\n            case StationCommand.isConnected: {');
+  });
 }

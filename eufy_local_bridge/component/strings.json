@@ -42,6 +42,24 @@
           "stun_errors_received": {
             "name": "STUN Binding error responses received from the HomeBase"
           },
+          "windows_lan_trial": {
+            "name": "Windows-style UDP selection",
+            "state": {
+              "running": "Checking the direct path",
+              "connected": "Command channel opened",
+              "failed": "Connection failed",
+              "skipped_online": "HomeBase already online",
+              "busy": "Another trial is running",
+              "error": "Trial unavailable",
+              "inconclusive": "No result by the end of capture"
+            }
+          },
+          "windows_lan_trial_reason": {
+            "name": "UDP trial reason"
+          },
+          "windows_lan_ice_attempt": {
+            "name": "ICE observations from the UDP trial"
+          },
           "ice_attempts": {
             "name": "ICE attempts that timed out during the test"
           },

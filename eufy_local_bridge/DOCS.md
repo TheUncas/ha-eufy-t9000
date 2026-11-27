@@ -11,6 +11,22 @@ Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS 
 3. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
 4. **Redémarrez Home Assistant Core** lorsque le journal le demande. Le module installe les fichiers dans `custom_components/eufy_local_bridge` et indique les mises à jour qui nécessitent un nouveau redémarrage.
 
+### Essayer la sélection UDP de Windows avec la version 1.3.6
+
+Installez la mise à jour, démarrez le module et redémarrez **Home Assistant Core**. Sur **HomeBase T9000**, appuyez une fois sur **Tester la liaison UDP**. Si la base est hors ligne pour le module, il tente d’ouvrir un canal de commande dans une session de diagnostic dédiée. La VM utilise son adresse IPv4 de sortie vers la base et retient le premier port candidat UDP annoncé pour l’IPv4 LAN de la base. L’essai s’exécute sur Home Assistant, sans le PC Windows ni commande d’alarme.
+
+Après 90 secondes, ouvrez **Outils de développement → États** et cherchez `sensor.homebase_t9000_diagnostic_udp`. L’attribut **`windows_lan_trial`** indique le résultat de cet essai.
+
+| Valeur | Lecture |
+|---|---|
+| `connected` | Le canal de commande s’est ouvert avec la paire UDP attendue. La session d’essai est ensuite fermée. `homebase_online` reflète toujours la connexion ordinaire. |
+| `failed` | L’essai a échoué. `windows_lan_trial_reason` donne le motif. `windows_lan_ice_attempt` fournit les observations ICE lorsqu’elles sont disponibles. |
+| `skipped_online` | Le module avait déjà une liaison active avec la base. Seule la capture UDP était nécessaire. |
+| `running`, `busy` | L’essai est en cours, ou un autre essai occupe déjà le connecteur. |
+| `error`, `inconclusive` | L’essai était indisponible, ou aucun résultat n’était parvenu au module à la fin de la capture. |
+
+Le motif `route_unavailable` indique que l’IPv4 de sortie locale n’a pas pu être déterminée. Les motifs `pair_mismatch` et `pair_unverified` indiquent respectivement que la paire observée différait de celle attendue ou que le connecteur n’a pas pu vérifier cette correspondance. Le statut du capteur, les compteurs UDP/STUN et `ice_attempts` gardent leur portée habituelle. Les compteurs incluent le trafic des reconnexions ordinaires survenues pendant la capture.
+
 ### Localiser un échec ICE avec la version 1.3.5
 
 Mettez le module à jour, démarrez-le et redémarrez **Home Assistant Core**. Sur la fiche **HomeBase T9000**, appuyez une fois sur **Tester la liaison UDP**. Ce bouton peut ouvrir une session avec la base sans lui envoyer de commande d’alarme.

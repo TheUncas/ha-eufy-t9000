@@ -13,6 +13,8 @@
 !patch-rtc.cjs
 !rtc-connect.cjs
 !rtc-observe.cjs
+!rtc-lan-trial.cjs
+!rtc-trial-runner.cjs
 !connector-amd64.tar.gz
 !connector-amd64.tar.gz.sha256
 !runtime/adapter.mjs

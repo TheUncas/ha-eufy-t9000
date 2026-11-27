@@ -53,7 +53,18 @@ export class UdpDiagnostic {
   snapshot() {
     const target = this.#adapter.udpDiagnosticTarget;
     if (!target) return undefined;
-    return this.#result?.stationId === target.id ? this.#result : idle(target.id);
+    if (this.#result?.stationId !== target.id) return idle(target.id);
+    if (this.#active?.trial) return { ...this.#result, windowsLanTrial: this.#active.trial };
+    return this.#result;
+  }
+
+  async #testWindowsLan(run) {
+    run.trial = { status: 'running' };
+    try {
+      run.trial = await this.#adapter.testWindowsLanSelection(run.target);
+    } catch {
+      run.trial = { status: 'error', reason: 'trial_unavailable' };
+    }
   }
 
   start(stationId) {
@@ -81,7 +92,6 @@ export class UdpDiagnostic {
     const run = this.#active = { target, child, iceAttempts: [] };
     let interfaces;
     let stun;
-    let connectionRefused = false;
     // The fixed probe emits one readiness line after installing its filter,
     // and one counter report. Publish a report only after a successful exit.
     const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
@@ -94,10 +104,7 @@ export class UdpDiagnostic {
           this.#checkTarget();
           if (run !== this.#active) return;
           run.readyAt = new Date().toISOString();
-          this.#adapter.connectForUdpDiagnostic(target).catch(error => {
-            // A WS acknowledgement may time out before the RTC handshake finishes.
-            connectionRefused = error.status !== 504;
-          });
+          void this.#testWindowsLan(run);
         } else {
           if (interfaces) throw Error();
           run.countersAt = new Date().toISOString();
@@ -130,10 +137,11 @@ export class UdpDiagnostic {
         const received = interfaces.some(row => row.received > 0);
         if (sent) status = received ? 'bidirectional' : 'outbound_only';
         else if (received) status = 'inbound_only';
-        else if (connectionRefused) reason = 'connection_unavailable';
         else status = 'no_traffic';
       }
+      const trial = run.trial?.status === 'running' ? { status: 'inconclusive' } : run.trial;
       this.#result = { ...this.#result, status, interfaces: code === 0 ? (interfaces ?? []) : [],
+        ...(trial ? { windowsLanTrial: trial } : {}),
         ...(status !== 'error' ? { iceAttempts: run.iceAttempts } : {}),
         ...(status !== 'error' && stun ? { stun } : {}),
         reason, finishedAt: new Date().toISOString() };

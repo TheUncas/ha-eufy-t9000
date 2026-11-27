@@ -19,6 +19,16 @@ export function publicAlarmFailureReason(reason) {
   return alarmFailures.has(reason) ? reason : undefined;
 }
 
+function publicIceAttempt(attempt) {
+  if (!iceStates.has(attempt?.iceState) || typeof attempt.finishedAt !== 'string' || attempt.finishedAt.length !== 24 ||
+      new Date(attempt.finishedAt).toJSON() !== attempt.finishedAt || !iceFlags.every(key => typeof attempt[key] === 'boolean')) return;
+  const report = { finishedAt: attempt.finishedAt, iceState: attempt.iceState };
+  for (const key of [...iceFlags, ...optionalIceFlags]) {
+    if (typeof attempt[key] === 'boolean') report[key] = attempt[key];
+  }
+  return report;
+}
+
 // Inventory values can predate this connection. Keep them separate from confirmed live state.
 function rememberReading(entry, name, value, metadata) {
   if (name === 'battery' && entry.kind === 'camera' && metadata?.readable !== false &&
@@ -204,12 +214,8 @@ export class EufyAdapter extends EventEmitter {
     delete station.lastIceAttempt;
     if (!rtcFailures.has(reason)) return;
     station.connectionIssue = reason;
-    if (!iceStates.has(attempt?.iceState) || typeof attempt.finishedAt !== 'string' || attempt.finishedAt.length !== 24 ||
-        new Date(attempt.finishedAt).toJSON() !== attempt.finishedAt || !iceFlags.every(key => typeof attempt[key] === 'boolean')) return;
-    const report = { finishedAt: attempt.finishedAt, iceState: attempt.iceState };
-    for (const key of [...iceFlags, ...optionalIceFlags]) {
-      if (typeof attempt[key] === 'boolean') report[key] = attempt[key];
-    }
+    const report = publicIceAttempt(attempt);
+    if (!report) return;
     station.lastIceAttempt = report;
     this.emit('iceAttempt', station.id, reason, report);
   }
@@ -284,7 +290,7 @@ export class EufyAdapter extends EventEmitter {
     this.#reconnect();
   }
 
-  #request(command, fields = {}) {
+  #request(command, fields = {}, timeoutMs = 12_000) {
     if (this.#socket?.readyState !== WebSocket.OPEN) return Promise.reject(bad(503, 'Connecteur eufy indisponible.'));
     const messageId = randomUUID();
     return new Promise((resolve, reject) => {
@@ -294,7 +300,7 @@ export class EufyAdapter extends EventEmitter {
         run(value);
       };
       const done = { resolve: finish(resolve), reject: finish(reject) };
-      const timer = setTimeout(() => done.reject(bad(504, 'Délai du connecteur dépassé. Résultat inconnu.')), 12_000);
+      const timer = setTimeout(() => done.reject(bad(504, 'Délai du connecteur dépassé. Résultat inconnu.')), timeoutMs);
       this.#pending.set(messageId, done);
       try { this.#socket.send(JSON.stringify({ command, messageId, ...fields })); }
       catch { done.reject(bad(503, 'Envoi au connecteur impossible.')); }
@@ -559,9 +565,20 @@ export class EufyAdapter extends EventEmitter {
     return this.#stations.get(this.#selected()?.id)?.udpTarget ?? null;
   }
 
-  async connectForUdpDiagnostic(target) {
+  async testWindowsLanSelection(target) {
     if (!target || target !== this.udpDiagnosticTarget) throw bad(409, 'La HomeBase sélectionnée a changé.');
-    if (!this.#selected().online) await this.#request('station.connect', { serialNumber: target.id });
+    if (this.#selected().online) return { status: 'skipped_online' };
+    const answer = await this.#request('station.test_lan_path', { serialNumber: target.id }, 70_000);
+    if (target !== this.udpDiagnosticTarget) throw bad(409, 'La HomeBase sélectionnée a changé.');
+    if (!['connected', 'failed', 'skipped_online', 'busy', 'error'].includes(answer?.status)) return { status: 'error' };
+    const result = { status: answer.status };
+    if (result.status === 'failed' || result.status === 'error') {
+      if (rtcFailures.has(answer.reason) || ['route_unavailable', 'pair_mismatch', 'pair_unverified',
+        'trial_timeout', 'trial_unavailable'].includes(answer.reason)) result.reason = answer.reason;
+      const report = publicIceAttempt(answer.iceAttempt);
+      if (report) result.iceAttempt = report;
+    }
+    return result;
   }
 
   #entry(target, id) {

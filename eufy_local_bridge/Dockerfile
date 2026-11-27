@@ -19,6 +19,7 @@ WORKDIR /usr/src/app
 COPY --from=connector /sdk/node_modules ./node_modules
 COPY rtc-connect.cjs ./node_modules/eufy-security-client/build/rtc/bridge-ha-rtc-connect.cjs
 COPY rtc-observe.cjs ./node_modules/eufy-security-client/build/rtc/bridge-ha-rtc-observe.cjs
+COPY rtc-lan-trial.cjs rtc-trial-runner.cjs ./node_modules/eufy-security-client/build/rtc/
 COPY patch-rtc.cjs /tmp/patch-rtc.cjs
 COPY THIRD_PARTY.md /usr/share/doc/eufy-local-bridge/THIRD_PARTY.md
 RUN node /tmp/patch-rtc.cjs && rm /tmp/patch-rtc.cjs \

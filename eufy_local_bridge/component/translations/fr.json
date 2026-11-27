@@ -42,6 +42,24 @@
           "stun_errors_received": {
             "name": "Réponses d’erreur STUN reçues de la HomeBase"
           },
+          "windows_lan_trial": {
+            "name": "Essai avec la sélection UDP Windows",
+            "state": {
+              "running": "Essai en cours",
+              "connected": "Canal de commande ouvert",
+              "failed": "Échec de la connexion",
+              "skipped_online": "HomeBase déjà en ligne",
+              "busy": "Un autre essai est en cours",
+              "error": "Essai indisponible",
+              "inconclusive": "Aucun résultat à la fin de la capture"
+            }
+          },
+          "windows_lan_trial_reason": {
+            "name": "Motif de l’essai UDP"
+          },
+          "windows_lan_ice_attempt": {
+            "name": "Observations ICE de l’essai UDP"
+          },
           "ice_attempts": {
             "name": "Tentatives ICE expirées pendant le test"
           },

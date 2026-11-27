@@ -369,9 +369,9 @@ export class EufyAdapter extends EventEmitter {
       }
       else {
         record.entry.live = status.commands.includes('start_livestream');
-        const motion = record.names.motionDetected;
-        if (motion?.type === 'boolean' && motion.readable !== false) record.entry.supportsMotion = true;
         if (['T8P00', 'T8P10', 'T8E00'].includes(properties.model)) record.entry.power = 'poe';
+        const motion = record.names.motionDetected;
+        if (record.entry.power === 'poe' || (motion?.type === 'boolean' && motion.readable !== false)) record.entry.supportsMotion = true;
         record.entry.kind = record.entry.power === 'poe' || record.entry.live || 'videoStreamingQuality' in record.names ? 'camera'
           : Object.keys(record.names).some(k => /sensorOpen|motionSensor|sensorChangeTime/i.test(k)) ? 'sensor' : 'other';
       }

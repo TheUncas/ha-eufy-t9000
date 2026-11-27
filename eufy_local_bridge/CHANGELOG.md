@@ -2,6 +2,12 @@
 
 [Notes de version en français](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.fr.md)
 
+## 1.6.1
+
+- The E40, E41 and S4 PoE cameras now get a **Mouvement** entity when the HomeBase reports the camera. Its state stays **Unknown** until the first motion state arrives.
+- The app handles local motion alerts for PoE cameras whose detection capability the connector previously missed. Live view and periodic thumbnails can remain off.
+- Update and start the app. A running 1.6.0 integration discovers the entities on its next refresh.
+
 ## 1.6.0
 
 - **Generate pairing key** now saves the key directly in the app through Home Assistant Supervisor and starts the app when needed. The wizard reuses an existing key. Manual pairing is still available.

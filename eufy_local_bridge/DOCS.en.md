@@ -37,6 +37,8 @@ If the fingerprint is still loading, check that the app is running and select **
 
 Under **Settings → Devices & services → Passerelle eufy locale → Devices**, open the camera that reported motion. For a standalone motion detector, open **HomeBase T9000**. The **Mouvement** entity includes the reporting device’s name. It shows **Detected** or **Clear** based on the most recent report. It shows **Unknown** until the connected base reports a state and **Unavailable** when the connection is down.
 
+On the **E40 (T8P00), E41 (T8P10) and S4 (T8E00)** PoE cameras, the entity appears as soon as the app recognizes the model. A local motion notification activates the sensor for 10 seconds by default. Each new notification extends that interval. To check reception, walk in front of the camera, even with live view closed, and wait for Home Assistant to refresh. Open that camera’s **Mouvement** entity under **Developer tools → States** and compare `last_motion_received_at` with the time of a motion alert in eufy.
+
 For an automation that should also react to brief motion, use a **State** trigger, select the entity and choose its `last_motion_received_at` attribute. It records the UTC time when the bridge last received a transition to motion, even if the detector clears before Home Assistant polls. Multiple detections between polls yield the latest timestamp. Restarting the app clears this in-memory value.
 
 ### Configure cameras

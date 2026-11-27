@@ -37,6 +37,8 @@ Si l’empreinte tarde à apparaître, vérifiez que le module est démarré pui
 
 Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**, ouvrez la caméra concernée. Pour un détecteur de mouvement autonome, ouvrez **HomeBase T9000**. L’entité **Mouvement** porte le nom de l’appareil qui a détecté le passage. Elle indique **Détecté** ou **Aucun mouvement** selon le dernier état reçu. Elle indique **Inconnu** si la base connectée n’a encore transmis aucun état, et **Indisponible** si la liaison est coupée.
 
+Sur les caméras PoE **E40 (T8P00), E41 (T8P10) et S4 (T8E00)**, l’entité apparaît dès que le module reconnaît le modèle. Une notification locale de mouvement active le capteur pendant 10 secondes par défaut. Une nouvelle notification prolonge ce délai. Pour vérifier la réception, passez devant la caméra, même avec le direct fermé, puis attendez une actualisation de Home Assistant. Dans **Outils de développement → États**, ouvrez l’entité **Mouvement** de cette caméra et comparez `last_motion_received_at` à l’heure d’une alerte de mouvement dans eufy.
+
 Pour une automatisation qui doit aussi réagir aux passages brefs, choisissez un déclencheur **État**, sélectionnez cette entité et son attribut `last_motion_received_at`. Il contient l’heure UTC du dernier début de mouvement reçu par le module, même si le détecteur est déjà revenu au repos à la prochaine lecture. Plusieurs passages entre deux lectures donnent la dernière heure reçue. Le redémarrage du module efface cette valeur en mémoire.
 
 ### Régler les caméras

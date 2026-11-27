@@ -131,6 +131,54 @@ patch(client + 'rtc/rtcSignaling.js', replace => {
   replace('const res = await fetch(url, {', 'const res = await fetch(url, {\n            signal: this.bridgeTrialSignal,');
 });
 
+// E40/E41 PoE cameras are generic SDK devices. Their local motion notifications
+// have a device serial and a specific event code, independent of the grid's recording state.
+patch(client + 'eufysecurity.js', replace => {
+  replace('station.on("push notification", (_station, message) => this.onPushMessage(message));',
+    'station.on("push notification", (source, message) => this.onBridgeStationPush(source, message));');
+  replace('    onPushMessage(message) {', `    async onBridgeStationPush(station, message) {
+        if (!station.isStationHomeBaseProfessionalS1() ||
+            message.event_type !== types_3.HB3PairedDevicePushEvent.MOTION_DETECTION) {
+            return this.onPushMessage(message);
+        }
+        if (message.station_sn !== station.getSerial() || !station.isConnected() ||
+            typeof message.device_sn !== "string" || !message.device_sn) return;
+        const generation = station.rtcConnectionGeneration;
+        let device;
+        try {
+            device = await this.getDevice(message.device_sn);
+        } catch {
+            return;
+        }
+        if (device.getStationSerial() !== station.getSerial() || device.getSerial() !== message.device_sn ||
+            !station.isConnected() || station.rtcConnectionGeneration !== generation) return;
+        if (!["T8P00", "T8P10", "T8E00"].includes(device.getModel())) return this.onPushMessage(message);
+        const camera = device instanceof device_1.Camera;
+        const motion = types_1.PropertyName.DeviceMotionDetected;
+        const firstOnConnection = device.bridgePoeMotionGeneration !== generation;
+        device.bridgePoeMotionGeneration = generation;
+        if (camera && message.type !== undefined &&
+            (message.msg_type === types_1.DeviceType.HB3 || message.msg_type === types_3.HB3PairedDeviceMessageType.SECURITY_EVT)) {
+            if (firstOnConnection && device.getPropertyValue(motion) === true) device.updateProperty(motion, true, true);
+            return this.onPushMessage(message);
+        }
+        // A 3101 notification is a pulse. Use the same expiry and destruction
+        // cleanup as native SDK cameras; an expiry is not a hub-reported end.
+        const event = types_1.DeviceEvent.MotionDetected;
+        device.clearEventTimeout(event);
+        if (camera) device.updateProperty(motion, true, firstOnConnection);
+        else device.emit("motion detected", device, true);
+        device.eventTimeouts.set(event, setTimeout(() => {
+            device.eventTimeouts.delete(event);
+            if (station.isConnected() && station.rtcConnectionGeneration === generation) {
+                if (camera) device.updateProperty(motion, false);
+                else device.emit("motion detected", device, false);
+            }
+        }, this.config.eventDurationSeconds * 1000));
+    }
+    onPushMessage(message) {`);
+});
+
 patch(client + 'http/station.js', replace => {
   replace('    async connectRtc() {', `    bridgeTestLanPath() {
         return require("../rtc/rtc-trial-runner.cjs")(this, stationRtcTransport_1.StationRtcTransport,

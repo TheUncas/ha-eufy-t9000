@@ -2,6 +2,12 @@
 
 [Release notes in English](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.md)
 
+## 1.6.1
+
+- Les caméras PoE E40, E41 et S4 disposent désormais d’une entité **Mouvement** dès leur découverte sur la HomeBase. Elle reste **Inconnu** jusqu’au premier état reçu.
+- Le module traite les alertes locales de mouvement des caméras PoE dont le connecteur ne reconnaissait pas la détection. Le direct et les vignettes périodiques peuvent rester désactivés.
+- Mettez à jour le module et démarrez-le. L’intégration déjà chargée en version 1.6.0 découvre les entités à l’actualisation suivante.
+
 ## 1.6.0
 
 - **Générer une clé d’appairage** enregistre la clé directement dans le module via le Supervisor de Home Assistant et démarre le module si nécessaire. L’assistant réutilise une clé existante. La saisie manuelle reste disponible.

@@ -48,8 +48,39 @@ patch(client + 'rtc/stationRtcTransport.js', (replace, source) => {
   replace('            this.session = undefined;\n        }\n    }\n}', '        }\n    }\n}');
 });
 
+patch(client + 'rtc/rtcPacket.js', replace => {
+  const magic = 'const MAGIC = Buffer.from("XZYH", "ascii");';
+  replace(magic, magic + `
+const { CommandType } = require("../p2p/types");
+exports.bridgePushBody = function (buf) {
+    // A standalone portal notice carries the same JSON body as the raw notify channel.
+    if (buf.length >= 16 && buf.subarray(0, 4).equals(MAGIC)) {
+        const header = parsePortalHeader(buf);
+        if (header.isResponse !== 0 || header.commandID !== CommandType.CMD_NOTIFY_PAYLOAD ||
+            header.paramLen !== buf.length - 16) return;
+        buf = buf.subarray(16);
+    }
+    if (!buf.length || buf.length > 64 * 1024 || ![0x7b, 0x20, 0x09, 0x0a, 0x0d].includes(buf[0])) return;
+    let notice;
+    try { notice = JSON.parse(buf.toString("utf8").replace(/\\0+$/, "")); }
+    catch { return; }
+    if (typeof notice?.cmd !== "number" && typeof notice?.cmd !== "string") return;
+    if ([CommandType.CMD_CAMERA_PUSH_NOTIFY, CommandType.CMD_STATION_PUSH_NOTIFY,
+        CommandType.CMD_STATION_PUSH_NOTIFY_ALT].includes(Number(notice.cmd))) return buf;
+};`);
+});
+
 patch(client + 'rtc/rtcPeer.js', replace => {
-  replace('"use strict";', '"use strict";\n' + observation);
+  replace('"use strict";', '"use strict";\n' + observation + '\nconst { bridgePushBody } = require("./rtcPacket");');
+  const notifyFramer = '            if (name === "notify" && this.sctpFramer?.isReady()) {';
+  replace(notifyFramer, `            if (name === "notify" || name === "download") {
+                const body = bridgePushBody(buf);
+                if (body) {
+                    this.emit("data", "WebrtcDataChannel", body, name === "notify" ? 3 : 2);
+                    return;
+                }
+            }
+` + notifyFramer);
   const create = 'this.pc = new node_datachannel_1.PeerConnection("eufy-ha", rtcConfig);';
   replace(create, create + '\n        const observedPc = this.pc;\n        observe.begin(observedPc, this.bridgeStationAddress);');
   for (const callback of ['onLocalDescription((sdp, type)', 'onLocalCandidate((candidate, mid)',
@@ -131,14 +162,40 @@ patch(client + 'rtc/rtcSignaling.js', replace => {
   replace('const res = await fetch(url, {', 'const res = await fetch(url, {\n            signal: this.bridgeTrialSignal,');
 });
 
-// E40/E41 PoE cameras are generic SDK devices. Their local motion notifications
-// have a device serial and a specific event code, independent of the grid's recording state.
+patch(client + 'rtc/rtcInbound.js', replace => {
+  // The body of a reassembled file-channel push begins with JSON, like a notify-channel push.
+  const parse = 'const parsed = (0, rtcPacket_1.parsePortalPacket)(buf, linkType) ??';
+  replace(parse, `const decodeLink = linkType === 2 && rtcPacket_1.bridgePushBody(buf) ? 3 : linkType;
+    const parsed = (0, rtcPacket_1.parsePortalPacket)(buf, decodeLink) ??`);
+  for (const [indent, label] of [['                ', 'station'], ['            ', 'camera']]) {
+    const log = '\n' + indent + 'logging_1.rootP2PLogger.info("RtcInbound ' + label + ' push notification"';
+    replace('if (innerPayload !== undefined) {' + log,
+      'if (innerPayload && typeof innerPayload === "object" && !Array.isArray(innerPayload)) {' + log);
+  }
+});
+
+patch(client + 'rtc/rtcCommandBridge.js', replace => {
+  // A reassembled notification may reuse the segment number of a pending command.
+  replace('if (!parsed) {\n            return false;\n        }\n        const pending = this.pending.get(parsed.segmen);',
+    'if (!parsed || (parsed.commandID === types_1.CommandType.CMD_NOTIFY_PAYLOAD && parsed.isResponse === 0)) {\n' +
+    '            return false;\n        }\n        const pending = this.pending.get(parsed.segmen);');
+});
+
+// E40/E41 are generic SDK devices. S4's native Camera handler only recognizes some
+// station envelopes. Mirror its motion events for otherwise unhandled local reports.
 patch(client + 'eufysecurity.js', replace => {
+  const nativeDevicePush = 'device.processPushNotification(station, message, this.config.eventDurationSeconds);';
+  replace(nativeDevicePush, 'if (device !== handledDevice) ' + nativeDevicePush);
   replace('station.on("push notification", (_station, message) => this.onPushMessage(message));',
     'station.on("push notification", (source, message) => this.onBridgeStationPush(source, message));');
   replace('    onPushMessage(message) {', `    async onBridgeStationPush(station, message) {
-        if (!station.isStationHomeBaseProfessionalS1() ||
-            message.event_type !== types_3.HB3PairedDevicePushEvent.MOTION_DETECTION) {
+        if (!station.isStationHomeBaseProfessionalS1()) return this.onPushMessage(message);
+        const codes = types_3.HB3PairedDevicePushEvent;
+        const directMotion = message.event_type === codes.MOTION_DETECTION;
+        if (!directMotion && !(this.config.deviceConfig.simultaneousDetections && [
+            codes.FACE_DETECTION, codes.PET_DETECTION, codes.VEHICLE_DETECTION,
+            codes.IDENTITY_PERSON_DETECTION, codes.STRANGER_PERSON_DETECTION,
+        ].includes(message.event_type))) {
             return this.onPushMessage(message);
         }
         if (message.station_sn !== station.getSerial() || !station.isConnected() ||
@@ -160,14 +217,14 @@ patch(client + 'eufysecurity.js', replace => {
         if (camera && message.type !== undefined &&
             (message.msg_type === types_1.DeviceType.HB3 || message.msg_type === types_3.HB3PairedDeviceMessageType.SECURITY_EVT)) {
             if (firstOnConnection && device.getPropertyValue(motion) === true) device.updateProperty(motion, true, true);
-            return this.onPushMessage(message);
-        }
-        // A 3101 notification is a pulse. Use the same expiry and destruction
-        // cleanup as native SDK cameras; an expiry is not a hub-reported end.
+            this.onPushMessage(message, device);
+            device.processPushNotification(station, message, this.config.eventDurationSeconds);
+        } else if (camera) device.updateProperty(motion, true, firstOnConnection);
+        else device.emit("motion detected", device, true);
+        // Keep the SDK's classification timers, but bind motion expiry to the
+        // connection that supplied this pulse, including native S4 reports.
         const event = types_1.DeviceEvent.MotionDetected;
         device.clearEventTimeout(event);
-        if (camera) device.updateProperty(motion, true, firstOnConnection);
-        else device.emit("motion detected", device, true);
         device.eventTimeouts.set(event, setTimeout(() => {
             device.eventTimeouts.delete(event);
             if (station.isConnected() && station.rtcConnectionGeneration === generation) {
@@ -176,7 +233,7 @@ patch(client + 'eufysecurity.js', replace => {
             }
         }, this.config.eventDurationSeconds * 1000));
     }
-    onPushMessage(message) {`);
+    onPushMessage(message, handledDevice) {`);
 });
 
 patch(client + 'http/station.js', replace => {

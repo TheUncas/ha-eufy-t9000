@@ -2,6 +2,12 @@
 
 [Release notes in English](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.md)
 
+## 1.6.2
+
+- Le module reconnaît davantage de notifications de détection sur la liaison locale avec la HomeBase. Une alerte peut désormais remonter même si elle arrive pendant une commande.
+- Sur les PoE E40, E41 et S4, les alertes de personne, de visage, d’animal et de véhicule alimentent aussi le capteur **Mouvement** lorsque les détections simultanées sont actives dans le connecteur.
+- Si la HomeBase annonce deux fois sa connexion, les détecteurs conservent leur état. Pour vérifier un passage après la mise à jour, consultez l’attribut `last_motion_received_at` de la caméra.
+
 ## 1.6.1
 
 - Les caméras PoE E40, E41 et S4 disposent désormais d’une entité **Mouvement** dès leur découverte sur la HomeBase. Elle reste **Inconnu** jusqu’au premier état reçu.

@@ -39,6 +39,8 @@ Under **Settings → Devices & services → Passerelle eufy locale → Devices**
 
 On the **E40 (T8P00), E41 (T8P10) and S4 (T8E00)** PoE cameras, the entity appears as soon as the app recognizes the model. A local motion notification activates the sensor for 10 seconds by default. Each new notification extends that interval. To check reception, walk in front of the camera, even with live view closed, and wait for Home Assistant to refresh. Open that camera’s **Mouvement** entity under **Developer tools → States** and compare `last_motion_received_at` with the time of a motion alert in eufy.
 
+If the sensor stays **Unknown**, check the `homebase_online` attribute on **Alarme T9000**. If it reads `true`, note the local time and type of a new alert in eufy, then check whether `last_motion_received_at` appears for the same camera in HA. On E40, E41 and S4 PoE cameras, person, face, pet and vehicle alerts also count as motion with the connector’s default settings.
+
 For an automation that should also react to brief motion, use a **State** trigger, select the entity and choose its `last_motion_received_at` attribute. It records the UTC time when the bridge last received a transition to motion, even if the detector clears before Home Assistant polls. Multiple detections between polls yield the latest timestamp. Restarting the app clears this in-memory value.
 
 ### Configure cameras

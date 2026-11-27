@@ -2,6 +2,12 @@
 
 [Notes de version en français](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.fr.md)
 
+## 1.6.2
+
+- The app recognizes more detection notifications over the local HomeBase connection. An alert can now reach Home Assistant even if it arrives while a command is pending.
+- On E40, E41 and S4 PoE cameras, person, face, pet and vehicle alerts also update the **Mouvement** sensor when the connector has simultaneous detections enabled.
+- Motion sensors retain their state when the HomeBase announces the same connection twice. To verify a detection after updating, check the camera’s `last_motion_received_at` attribute.
+
 ## 1.6.1
 
 - The E40, E41 and S4 PoE cameras now get a **Mouvement** entity when the HomeBase reports the camera. Its state stays **Unknown** until the first motion state arrives.

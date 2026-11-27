@@ -498,7 +498,10 @@ export class EufyAdapter extends EventEmitter {
         this.emit('stationConnection', rtcFailures.has(event.reason) ? event.reason : undefined);
       }
       for (const r of [record, ...Array.from(this.#devices.values()).filter(d => d.parent === id && d.entry)]) {
-        r.entry.properties = Object.fromEntries(Object.entries(r.entry.properties).filter(([k]) => identity.has(k)));
+        const keepDeviceMotion = r !== record && wasOnline && entry.online;
+        r.entry.properties = Object.fromEntries(Object.entries(r.entry.properties).filter(
+          ([key]) => identity.has(key) || (key === 'motionDetected' && keepDeviceMotion)
+        ));
         r.entry.settings = readSettings(r.names);
         if (!entry.online) this.#endStream(r.entry.id);
       }

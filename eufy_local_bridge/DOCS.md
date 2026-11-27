@@ -39,6 +39,8 @@ Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appa
 
 Sur les caméras PoE **E40 (T8P00), E41 (T8P10) et S4 (T8E00)**, l’entité apparaît dès que le module reconnaît le modèle. Une notification locale de mouvement active le capteur pendant 10 secondes par défaut. Une nouvelle notification prolonge ce délai. Pour vérifier la réception, passez devant la caméra, même avec le direct fermé, puis attendez une actualisation de Home Assistant. Dans **Outils de développement → États**, ouvrez l’entité **Mouvement** de cette caméra et comparez `last_motion_received_at` à l’heure d’une alerte de mouvement dans eufy.
 
+Si le capteur reste **Inconnu**, regardez l’attribut `homebase_online` de l’entité **Alarme T9000**. S’il vaut `true`, relevez l’heure locale et le type d’une nouvelle alerte dans eufy, puis vérifiez si `last_motion_received_at` apparaît sur la même caméra dans HA. Sur les PoE E40, E41 et S4, les alertes de personne, de visage, d’animal et de véhicule comptent également comme un mouvement avec les réglages par défaut du connecteur.
+
 Pour une automatisation qui doit aussi réagir aux passages brefs, choisissez un déclencheur **État**, sélectionnez cette entité et son attribut `last_motion_received_at`. Il contient l’heure UTC du dernier début de mouvement reçu par le module, même si le détecteur est déjà revenu au repos à la prochaine lecture. Plusieurs passages entre deux lectures donnent la dernière heure reçue. Le redémarrage du module efface cette valeur en mémoire.
 
 ### Régler les caméras

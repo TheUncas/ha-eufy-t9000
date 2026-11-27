@@ -1,19 +1,10 @@
 'use strict';
 
-const { openLanTrial } = require('./rtc-lan-trial.cjs');
+const { attachLanSelection, openLanTrial } = require('./rtc-lan-trial.cjs');
 const active = new Set();
 
 function testSession(session, selection, signal, timeoutFailure) {
-  // Reuse the SDK's per-peer LAN hooks for binding, SDP, trickle and retry cleanup.
-  // This selection forwards no packets and has no Windows relay registration.
-  session.bridgeTrialLan = {
-    ...selection,
-    close: () => selection.reset(),
-    trickle(candidate) {
-      const allowed = candidate ? selection.local(candidate) : '';
-      if (allowed !== undefined) session.bridgeSendIce(allowed);
-    },
-  };
+  attachLanSelection(session, selection);
   session.signaling.bridgeTrialSignal = signal;
   return new Promise(resolve => {
     let done = false, timer;

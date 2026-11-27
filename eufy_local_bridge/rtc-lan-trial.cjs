@@ -75,4 +75,33 @@ async function openLanTrial(stationIp, signal) {
   }
 }
 
-module.exports = { makeSelection, openLanTrial };
+function attachLanSelection(session, selection) {
+  session.bridgeTrialLan = {
+    ...selection,
+    close: selection.reset,
+    trickle(candidate) {
+      const allowed = candidate ? selection.local(candidate) : '';
+      if (allowed !== undefined) session.bridgeSendIce(allowed);
+    },
+  };
+}
+
+async function preparePrimaryLan(session) {
+  const lookup = session.bridgeRouteLookup = new AbortController();
+  const selection = await openLanTrial(session.bridgeLanTarget, lookup.signal).catch(() => undefined);
+  session.bridgeRouteLookup = undefined;
+  if (session.closed) return;
+  if (session.peer.bridgeStationAddress() !== session.bridgeLanTarget)
+    throw Object.assign(Error('T9000 RTC station address changed'), { bridgeStage: 'no_lan_candidate' });
+  // Without a private route, the SDK can still discover local candidates as usual.
+  if (selection) attachLanSelection(session, selection);
+}
+
+function primaryPairMatches(session) {
+  try {
+    return session.bridgeLanTarget === session.peer.bridgeStationAddress() &&
+      session.bridgeTrialLan.matchesPair(session.peer.pc?.getSelectedCandidatePair());
+  } catch { return false; }
+}
+
+module.exports = { makeSelection, openLanTrial, attachLanSelection, preparePrimaryLan, primaryPairMatches };

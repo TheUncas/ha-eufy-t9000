@@ -23,8 +23,21 @@ patch(client + 'rtc/stationRtcTransport.js', (replace, source) => {
   if (!method?.[0].includes('this.wirePrimarySession(session);')) throw Error('Unexpected RTC connect method');
   replace('"use strict";', '"use strict";\n' + observation + '\nconst connectPrimary = require("./bridge-ha-rtc-connect.cjs");');
   replace(method[0], '    async connect() {\n        return connectPrimary.call(this, observe.timeoutFailure);\n    }\n');
-  replace('wirePrimarySession(session) {',
-    'wirePrimarySession(session) {\n        session.peer.bridgeStationAddress = this.bridgeStationAddress;');
+  // Both initial command sessions and their make-before-break replacements use createSession.
+  replace('return new rtcSession_1.RtcSession({', 'const session = new rtcSession_1.RtcSession({');
+  replace('region: this.credentials.region,\n        });', `region: this.credentials.region,
+        });
+        session.peer.bridgeStationAddress = this.bridgeStationAddress;
+        const address = this.bridgeStationAddress?.();
+        if (address && address !== this.bridgeDirectTarget) session.bridgeLanTarget = address;
+        return session;`);
+  const handoff = 'await connectAndWaitForRtcSession(newSession, boundedTimeoutMs);';
+  replace(handoff, handoff + '\n            if (!this.connected || this.session !== oldSession) throw Error("T9000 RTC handoff retired");');
+  replace('const onClose = () => finish(new Error("T9000 RTC handoff closed before connect"));',
+    `const onClose = () => {
+            if (session.bridgeLanTarget && session.bridgeTrialLan && !session.closed && connectPrimary.canFinishDirect(session)) return;
+            finish(new Error("T9000 RTC handoff closed before connect"));
+        };`);
   replace('session.on("connected", () => {\n            if (this.connected)', 'session.on("connected", () => {\n            if (this.session !== session || this.connected)');
   replace('const wasConnected = this.connected;\n            this.connected = false;',
     'if (this.connecting && !this.connected && connectPrimary.canFinishDirect(session)) return;\n            const wasConnected = this.connected;\n            this.connected = false;');
@@ -67,6 +80,21 @@ patch(client + 'rtc/rtcPeer.js', replace => {
 
 patch(client + 'rtc/rtcSession.js', replace => {
   replace('"use strict";', '"use strict";\n' + observation);
+  replace('    async connect() {', `    async connect() {
+        if (this.bridgeLanTarget) {
+            await require("./rtc-lan-trial.cjs").preparePrimaryLan(this);
+            if (this.closed) return;
+        }`);
+  replace('this.closed = true;\n        this.bridgeEarlyHosts.clear();',
+    'this.closed = true;\n        this.bridgeRouteLookup?.abort();\n        this.bridgeEarlyHosts.clear();');
+  replace('this.peer.on("commandChannelOpen", () => {\n            if (!this.connected) {',
+    `this.peer.on("commandChannelOpen", () => {
+            if (!this.connected) {
+                if (this.closed) return;
+                if (this.bridgeLanTarget && this.bridgeTrialLan && !require("./rtc-lan-trial.cjs").primaryPairMatches(this)) {
+                    this.emit("error", Object.assign(Error("T9000 RTC selected LAN pair unavailable"), { bridgeStage: "ice_unavailable" }));
+                    return;
+                }`);
   replace('this.peer.bridgeWindows = require("./bridge-windows-lan.cjs").openWindowsLan(',
     'this.peer.bridgeWindows = this.bridgeTrialLan ?? require("./bridge-windows-lan.cjs").openWindowsLan(');
   replace('async bridgeReceiveCandidate(candidate) {', `async bridgeReceiveCandidate(candidate) {

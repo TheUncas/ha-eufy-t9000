@@ -11,6 +11,12 @@ Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS 
 3. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
 4. **Redémarrez Home Assistant Core** lorsque le journal le demande. Le module installe les fichiers dans `custom_components/eufy_local_bridge` et indique les mises à jour qui nécessitent un nouveau redémarrage.
 
+### Vérifier la connexion de la HomeBase en 1.3.7
+
+La connexion habituelle du module utilise désormais en priorité la sélection UDP essayée par le bouton de diagnostic. La VM choisit son IPv4 de sortie vers la HomeBase et le premier port UDP annoncé pour l’adresse LAN de celle-ci. Le module recalcule la paire au renouvellement de la session. Si ce chemin échoue, une reconnexion peut reprendre la sélection automatique des candidats du réseau local.
+
+Après la mise à jour, démarrez le module et redémarrez Home Assistant Core si le journal le demande. Dans **Outils de développement → États**, ouvrez `alarm_control_panel.alarme_t9000` et vérifiez que l’attribut `homebase_online` passe à `true`. Vérifiez-le de nouveau environ cinq minutes plus tard pour couvrir le premier renouvellement automatique. Ces vérifications se font sans changer le mode de l’alarme. Si la base reste hors ligne, relevez `connection_issue` et, si présent, `last_ice_attempt` après la reconnexion.
+
 ### Essayer la sélection UDP de Windows avec la version 1.3.6
 
 Installez la mise à jour, démarrez le module et redémarrez **Home Assistant Core**. Sur **HomeBase T9000**, appuyez une fois sur **Tester la liaison UDP**. Si la base est hors ligne pour le module, il tente d’ouvrir un canal de commande dans une session de diagnostic dédiée. La VM utilise son adresse IPv4 de sortie vers la base et retient le premier port candidat UDP annoncé pour l’IPv4 LAN de la base. L’essai s’exécute sur Home Assistant, sans le PC Windows ni commande d’alarme.

@@ -1,5 +1,8 @@
 'use strict';
 
+const lanFailures = new Set(['no_lan_candidate', 'ice_unavailable', 'ice_path_lost', 'peer_unavailable',
+  'secure_channel_unavailable', 'command_channel_unavailable']);
+
 function canFinishDirect(session) {
   return Boolean(session.peer?.remoteDescriptionSet && session.bridgeAnswerSent);
 }
@@ -23,6 +26,11 @@ module.exports = async function connect(timeoutFailure) {
       session.off('close', onClose);
       session.off('bridgeRetired', onRetired);
       if (error && this.session === session) {
+        if (lanFailures.has(error.bridgeStage)) {
+          const address = session.peer?.bridgeStationAddress?.();
+          if (address && session.bridgeTrialLan && address === session.bridgeLanTarget) this.bridgeDirectTarget = address;
+          else if (!session.bridgeLanTarget && this.bridgeDirectTarget === address) this.bridgeDirectTarget = undefined;
+        }
         this.connecting = false;
         this.closeSession();
       }

@@ -1,15 +1,17 @@
 """Pair Home Assistant and complete eufy challenges inside the native setup flow."""
 import asyncio
 import re
+import secrets
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, TextSelectorType
 
 from . import DOMAIN, vol
 from .addon_client import PairingError, account_request, normalize_pairing
+from .setup_fingerprint import async_read_setup_fingerprint
 
 _PASSWORD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
-_PAIRING = vol.Schema({vol.Required("token"): _PASSWORD, vol.Required("fingerprint"): str})
 _ACCOUNT = vol.Schema({
     vol.Required("email"): TextSelector(TextSelectorConfig(type=TextSelectorType.EMAIL)),
     vol.Required("password"): _PASSWORD,
@@ -25,6 +27,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         self._pairing = None
+        self._generated_key = None
+        self._setup_fingerprint = None
         self._captcha = ""
         self._submitted = False
         self._poll_task = None
@@ -35,21 +39,60 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="yaml_active")
             await self.async_set_unique_id("local_addon")
             self._abort_if_unique_id_configured()
+        return self.async_show_menu(step_id="user", menu_options=["generate_key", "show_fingerprint", "pairing"])
+
+    async def async_step_generate_key(self, user_input=None):
+        if user_input is not None:
+            return await self.async_step_show_fingerprint()
+        if self._generated_key is None:
+            self._generated_key = secrets.token_urlsafe(32)
+        return self.async_show_form(step_id="generate_key", data_schema=vol.Schema({}),
+                                   description_placeholders={"key": self._generated_key})
+
+    async def async_step_show_fingerprint(self, user_input=None):
+        if user_input is not None:
+            return await self.async_step_pairing()
+        self._setup_fingerprint = await async_read_setup_fingerprint(self.hass)
+        if self._setup_fingerprint is None:
+            return await self.async_step_fingerprint_pending()
+        return self.async_show_form(step_id="show_fingerprint", data_schema=vol.Schema({}),
+                                   description_placeholders={"fingerprint": self._setup_fingerprint})
+
+    async def async_step_fingerprint_pending(self, user_input=None):
+        return self.async_show_menu(step_id="fingerprint_pending", menu_options=["show_fingerprint", "pairing"])
+
+    def _pairing_form(self, errors):
+        token = vol.Optional("token") if self._generated_key else vol.Required("token")
+        fingerprint = (vol.Required("fingerprint", default=self._setup_fingerprint)
+                       if self._setup_fingerprint else vol.Required("fingerprint"))
+        return self.async_show_form(step_id="pairing", errors=errors,
+                                    data_schema=vol.Schema({token: _PASSWORD, fingerprint: str}))
+
+    async def async_step_pairing(self, user_input=None):
         errors = {}
         if user_input is not None:
             try:
-                self._pairing = normalize_pairing(user_input)
+                self._pairing = normalize_pairing({
+                    **user_input, "token": user_input.get("token") or self._generated_key or "",
+                })
                 return await self._next_step()
             except PairingError as err:
                 errors["base"] = str(err)
-        return self.async_show_form(step_id="user", data_schema=_PAIRING, errors=errors)
+        elif self._setup_fingerprint is None:
+            self._setup_fingerprint = await async_read_setup_fingerprint(self.hass)
+        return self._pairing_form(errors)
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return BridgeOptionsFlow()
 
     async def async_step_reauth(self, entry_data):
         self._pairing = self._get_reauth_entry().data
         try:
             return await self._next_step()
         except PairingError as err:
-            return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": str(err)})
+            return self._pairing_form({"base": str(err)})
 
     async def _next_step(self):
         self._submitted = False
@@ -104,7 +147,7 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if result == "login_timeout":
             return self.async_show_form(step_id="account", data_schema=_ACCOUNT, errors={"base": result})
         if isinstance(result, str):
-            return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": result})
+            return self._pairing_form({"base": result})
         return await self._route_status(result)
 
     async def async_step_account(self, user_input=None):
@@ -128,7 +171,18 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return await self.async_step_waiting()
             except PairingError as err:
                 if str(err) in ("invalid_token", "invalid_fingerprint"):
-                    return self.async_show_form(step_id="user", data_schema=_PAIRING, errors={"base": str(err)})
+                    return self._pairing_form({"base": str(err)})
                 errors["base"] = str(err)
         return self.async_show_form(step_id=step, data_schema=schema, errors=errors,
                                     description_placeholders=placeholders)
+
+
+class BridgeOptionsFlow(config_entries.OptionsFlow):
+    async def async_step_init(self, user_input=None):
+        return self.async_show_menu(step_id="init", menu_options=["show_fingerprint"])
+
+    async def async_step_show_fingerprint(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=dict(self.config_entry.options))
+        return self.async_show_form(step_id="show_fingerprint", data_schema=vol.Schema({}),
+                                   description_placeholders={"fingerprint": self.config_entry.data["fingerprint"]})

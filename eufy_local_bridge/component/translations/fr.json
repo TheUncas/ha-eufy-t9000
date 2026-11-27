@@ -85,8 +85,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Appairer l’application T9000",
-        "description": "Démarrez l’application Eufy Local Bridge sur cet hôte Home Assistant. Saisissez sa clé d’appairage et l’empreinte SHA-256 du certificat affichée dans le journal de l’application.",
+        "title": "Relier Home Assistant à l’application T9000",
+        "description": "Pour une première installation, générez une clé d’appairage. Si vous avez déjà enregistré une clé dans l’application, choisissez Continuer l’appairage.",
+        "menu_options": {
+          "generate_key": "Générer une clé d’appairage",
+          "show_fingerprint": "Afficher l’empreinte SHA-256",
+          "pairing": "Continuer l’appairage"
+        }
+      },
+      "generate_key": {
+        "title": "Copiez votre clé d’appairage",
+        "description": "`{key}`\n\nGardez cette clé privée. Dans un autre onglet, ouvrez la Configuration de l’application T9000, collez la clé dans Clé d’appairage, enregistrez et démarrez l’application. Revenez ici et validez pour voir l’empreinte."
+      },
+      "show_fingerprint": {
+        "title": "Empreinte SHA-256 de votre application",
+        "description": "`{fingerprint}`\n\nCette empreinte permet à Home Assistant de reconnaître votre application. Validez pour l’utiliser lors de l’appairage."
+      },
+      "fingerprint_pending": {
+        "title": "En attente de l’empreinte de l’application",
+        "description": "Enregistrez la clé d’appairage dans l’application T9000, démarrez-la et vérifiez à nouveau. Vous pouvez aussi copier l’empreinte SHA-256 dans l’onglet Journal de l’application et la saisir manuellement.",
+        "menu_options": {
+          "show_fingerprint": "Vérifier à nouveau",
+          "pairing": "Saisir les informations manuellement"
+        }
+      },
+      "pairing": {
+        "title": "Continuer l’appairage",
+        "description": "Si vous venez de générer une clé ici, laissez le champ de la clé vide pour l’utiliser. Sinon, saisissez la clé enregistrée dans l’application. Si le champ de l’empreinte est vide, copiez l’empreinte SHA-256 depuis l’onglet Journal de l’application.",
         "data": {
           "token": "Clé d’appairage de l’application",
           "fingerprint": "Empreinte SHA-256 du certificat"
@@ -135,6 +160,20 @@
       "already_configured": "Cette application est déjà appairée.",
       "yaml_active": "Retirez le bloc eufy_local_bridge de configuration.yaml, puis redémarrez Home Assistant avant d’appairer l’application. Les identifiants des entités seront réutilisés.",
       "reauth_successful": "L’authentification a été renouvelée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Réglages de l’application locale",
+        "menu_options": {
+          "show_fingerprint": "Afficher l’empreinte SHA-256"
+        }
+      },
+      "show_fingerprint": {
+        "title": "Empreinte SHA-256 de l’application appairée",
+        "description": "Home Assistant a vérifié cette empreinte lors de l’appairage avec l’application.\n\n`{fingerprint}`"
+      }
     }
   }
 }

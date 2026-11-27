@@ -1,7 +1,8 @@
 import https from 'node:https';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { chmod, chown, lstat, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { chmod, chown, lstat, mkdir, mkdtemp, open, readFile, rm } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EufyAdapter } from '../../adapter.mjs';
 import { createEufyLogin, getLoginStatus } from '../../eufy-login.mjs';
@@ -9,6 +10,34 @@ import { localCertificate } from '../../local-https.mjs';
 import { Video } from '../../video.mjs';
 import { addonHandler, port } from './api.mjs';
 import { UdpDiagnostic } from './udp-diagnostic.mjs';
+
+// The launcher can traverse the Core mount only until it drops root.
+// Keep one writable descriptor for the public certificate fingerprint.
+export async function openSetupFingerprint(mount) {
+  const dir = await lstat(mount);
+  if (!dir.isDirectory() || dir.uid !== 0 || (dir.mode & 0o022)) throw Error('Unsafe configuration directory');
+  const file = await open(mount + '/.eufy-local-bridge-tls.sha256',
+    constants.O_CREAT | constants.O_WRONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o644);
+  try {
+    const info = await file.stat();
+    if (!info.isFile() || info.uid !== 0 || info.nlink !== 1 || (info.mode & 0o022)) throw Error('Unsafe fingerprint file');
+    // The launcher umask is 077; Core may run as a different user.
+    // Only make an empty file public, never widen access to pre-existing contents.
+    if (info.size === 0) await file.chmod(0o644);
+    return file;
+  } catch (error) {
+    await file.close();
+    throw error;
+  }
+}
+
+export async function writeSetupFingerprint(file, fingerprint) {
+  if (!/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/i.test(fingerprint)) throw Error('Invalid certificate fingerprint');
+  await file.truncate(0);
+  const digest = fingerprint.replaceAll(':', '').toLowerCase() + '\n';
+  const { bytesWritten } = await file.write(digest, 0, 'ascii');
+  if (bytesWritten !== digest.length) throw Error('Incomplete certificate fingerprint');
+}
 
 export function timingOptions(options) {
   const seconds = (key, fallback, min, max) => {
@@ -53,6 +82,11 @@ async function run() {
   }
   const options = JSON.parse(await readFile('/data/options.json', 'utf8'));
   const { pairing_key: token } = options;
+  if (token === '' || token === undefined) {
+    console.log('Redémarrez Home Assistant, ajoutez l’intégration « Passerelle eufy locale » et choisissez « Générer une clé d’appairage ».');
+    console.log('Restart Home Assistant, add the “Passerelle eufy locale” integration, and choose “Generate pairing key”.');
+    return;
+  }
   if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{32,128}$/.test(token)) {
     console.error('Configurez la clé d’appairage du module (32 à 128 caractères parmi A-Z, a-z, 0-9, _ et -).');
     process.exitCode = 1;
@@ -75,6 +109,7 @@ async function run() {
   }
   await chmod('/data/options.json', 0o600);
   await chmod('/data', 0o711);
+  const pinFile = await openSetupFingerprint(mount).catch(() => null);
   process.setgroups([]);
   process.setgid(1000);
   process.setuid(1000);
@@ -90,6 +125,18 @@ async function run() {
     video, udpDiagnostic, statePollSeconds: timing.statePollSeconds, poeSnapshotIntervalSeconds: timing.poeSnapshotIntervalSeconds }));
   server.listen(port, '127.0.0.1');
   await once(server, 'listening');
+  // A second instance that fails to bind the port must never publish its certificate.
+  if (pinFile) {
+    try {
+      await writeSetupFingerprint(pinFile, cert.fingerprint);
+    } catch {
+      console.warn('Empreinte indisponible dans l’assistant. Copiez la valeur SHA-256 du journal.');
+    } finally {
+      await pinFile.close();
+    }
+  } else {
+    console.warn('Empreinte indisponible dans l’assistant. Copiez la valeur SHA-256 du journal.');
+  }
   const child = spawn(process.execPath, ['/opt/bridge/eufy-login.mjs'], {
     cwd: '/usr/src/app', stdio: ['ignore', 'ignore', 'inherit'],
     env: {

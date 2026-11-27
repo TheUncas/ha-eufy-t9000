@@ -12,11 +12,12 @@ Connect an **eufy HomeBase T9000** directly to Home Assistant OS on a **64-bit I
 
 ## Installation
 
-1. Follow the store link above and confirm. To add the repository manually, open **Settings → Apps → App store → ⋮ → Repositories** and enter `https://github.com/TheUncas/ha-eufy-t9000`.
-2. Install **Eufy Local Bridge T9000**. Generate a pairing key using the instructions below. Paste it into **Pairing key** (`pairing_key`) on the app’s **Configuration** tab. Save, enable **Start on boot** and start the app. [Generate a pairing key](#generate-a-pairing-key)
-3. Open the **Log** tab. Check that the app installed the integration and copy the public SHA-256 certificate fingerprint. **Restart Home Assistant Core** to load the integration.
-4. Open Home Assistant over **HTTPS**. Go to **Settings → Devices & services → Add integration** and search for **Passerelle eufy locale**. Enter the same key in **App pairing key** and paste the fingerprint from the log into **Certificate SHA-256 fingerprint**. Sign in to eufy and complete any CAPTCHA or verification code prompt.
-5. Open **Mode de garde T9000** to choose a profile reported by your HomeBase, including geofencing, schedules and custom profiles. **Alarme T9000** displays the active alarm state confirmed by the HomeBase. Each **Eufy batterie** sensor displays the latest battery level received for that camera.
+1. **Install the app.** Follow the store link above, install **Eufy Local Bridge T9000** and press **Start**. On the first start, leave **Pairing key** empty. The app installs the integration and stops. Restart **Home Assistant** once to load it.
+2. **Create your key.** Open Home Assistant over HTTPS. Go to **Settings → Devices & services → Add integration**, choose **Passerelle eufy locale**, then **Generate pairing key**. Copy the key and keep this dialog open.
+3. **Start the bridge.** In a second tab, open **Settings → Apps → Eufy Local Bridge T9000 → Configuration**. Paste the key into **Pairing key** and save. Turn on **Start on boot** and start the app.
+4. **Pair and sign in.** Return to the integration and submit the key screen. The app’s fingerprint appears. Continue, leave the key field empty to use the key you just generated, and submit. Sign in to eufy and complete any verification it asks for.
+
+You’ll find **HomeBase T9000** and your cameras under **Settings → Devices & services → Passerelle eufy locale → Devices**. Open **Alarme T9000** for the confirmed alarm state, **Mode de garde T9000** to select a guard profile, or **Eufy batterie** for a camera’s latest battery level.
 
 To open the full list of profiles by tapping the alarm tile, use the dashboard card example in the guide. [Configure the alarm tile](eufy_local_bridge/DOCS.en.md#open-all-guard-modes-from-the-alarm-tile)
 
@@ -32,17 +33,9 @@ If the HomeBase stays offline, open its **HomeBase T9000** device page and press
 
 ## Generate a pairing key
 
-The `pairing_key` is a secret shared by the Home Assistant integration and the app. The integration presents the key to read device states and send alarm commands. The SHA-256 fingerprint in the app log is public and lets the integration verify the app’s certificate.
+**Generate pairing key** creates a private key locally. Keep it in your password manager. It allows Home Assistant to read devices and control the alarm. **Show SHA-256 fingerprint** displays the public fingerprint Home Assistant uses to recognize your bridge.
 
-Generate the key **once** and store it in your password manager. Use its generator to create a string of 32 to 128 characters using `A–Z`, `a–z`, `0–9`, `-` and `_`. On Windows, this PowerShell snippet generates a 64-character key from 32 random bytes.
-
-```powershell
-$bytes = New-Object byte[] 32
-$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($bytes)
-$rng.Dispose()
-[BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
-```
+Already paired? Open **Configure → Show SHA-256 fingerprint** on the integration to see the saved fingerprint. Keep your existing key for updates. If you need to pair again, choose **Continue pairing** and enter that same key. [Pairing help](eufy_local_bridge/DOCS.en.md#generate-the-pairing-key)
 
 ## Operating notes
 

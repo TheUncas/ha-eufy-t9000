@@ -85,8 +85,33 @@
   "config": {
     "step": {
       "user": {
-        "title": "Pair the T9000 app",
-        "description": "Start the Eufy Local Bridge app on this Home Assistant host. Enter its pairing key and the SHA-256 certificate fingerprint printed in the app log.",
+        "title": "Connect Home Assistant to the T9000 app",
+        "description": "For a first installation, generate a pairing key. If you already saved a key in the app, choose Continue pairing.",
+        "menu_options": {
+          "generate_key": "Generate pairing key",
+          "show_fingerprint": "Show SHA-256 fingerprint",
+          "pairing": "Continue pairing"
+        }
+      },
+      "generate_key": {
+        "title": "Copy your pairing key",
+        "description": "`{key}`\n\nKeep this key private. In another tab, open the T9000 app’s Configuration, paste the key into Pairing key, save and start the app. Return here and submit to see the fingerprint."
+      },
+      "show_fingerprint": {
+        "title": "Your app’s SHA-256 fingerprint",
+        "description": "`{fingerprint}`\n\nHome Assistant uses this fingerprint to recognize your app. Continue to use it for pairing."
+      },
+      "fingerprint_pending": {
+        "title": "Waiting for the app’s fingerprint",
+        "description": "Save the pairing key in the T9000 app, start it and check again. You can also copy the SHA-256 fingerprint from the app’s Log and enter it manually.",
+        "menu_options": {
+          "show_fingerprint": "Check again",
+          "pairing": "Enter pairing details manually"
+        }
+      },
+      "pairing": {
+        "title": "Continue pairing",
+        "description": "If you just generated a pairing key here, leave the key field empty to use it. Otherwise, enter the key you saved in the app. If the fingerprint field is empty, copy the SHA-256 fingerprint from the app’s Log.",
         "data": {
           "token": "App pairing key",
           "fingerprint": "Certificate SHA-256 fingerprint"
@@ -135,6 +160,20 @@
       "already_configured": "This local app is already paired.",
       "yaml_active": "Remove the eufy_local_bridge section from configuration.yaml and restart Home Assistant before pairing the local app. Existing entity identifiers will be reused.",
       "reauth_successful": "Authentication renewed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Local app settings",
+        "menu_options": {
+          "show_fingerprint": "Show SHA-256 fingerprint"
+        }
+      },
+      "show_fingerprint": {
+        "title": "Paired app’s SHA-256 fingerprint",
+        "description": "Home Assistant verified this fingerprint when pairing with the app.\n\n`{fingerprint}`"
+      }
     }
   }
 }

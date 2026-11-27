@@ -2,6 +2,12 @@
 
 [Notes de version en français](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.fr.md)
 
+## 1.5.0
+
+- Choose **Generate pairing key** in the integration wizard, then paste the key into the app settings. The wizard can show and fill in the app’s SHA-256 certificate fingerprint for you.
+- The English and French setup guides now walk through first-time pairing without terminal commands.
+- After updating, start the app and restart Home Assistant Core once to load the new wizard. Existing installations keep their pairing key and eufy session.
+
 ## 1.4.1
 
 - Added an English README and an English guide to installation, camera settings and UDP troubleshooting.

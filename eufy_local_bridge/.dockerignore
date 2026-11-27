@@ -23,6 +23,8 @@
 !rtc-trial-runner.cjs
 !connector-amd64.tar.gz
 !connector-amd64.tar.gz.sha256
+!patch-sdk-account.cjs
+!sdk-session.cjs
 !runtime/adapter.mjs
 !runtime/eufy-login.mjs
 !runtime/http-api.mjs

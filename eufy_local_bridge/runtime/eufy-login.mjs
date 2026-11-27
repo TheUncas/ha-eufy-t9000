@@ -13,6 +13,17 @@ const errors = {
   503: 'Le service de connexion eufy est indisponible. Vérifiez que le connecteur est démarré.'
 };
 
+const reauthMessages = new Map([
+  ['session_expired', 'Session eufy à renouveler. L’échéance enregistrée a été atteinte.'],
+  ['account_rejected', 'Session eufy à renouveler. Le service de profil eufy a refusé la session.'],
+  ['session_revoked', 'Session eufy à renouveler. Le service eufy Mega a signalé une révocation.'],
+  ['login_timeout', 'Connexion eufy à reprendre. Le délai de cinq minutes pour terminer la connexion est écoulé.'],
+]);
+
+function logReauth(reason) {
+  console.warn(reauthMessages.get(reason) ?? 'Session eufy à renouveler. Motif indisponible.');
+}
+
 function failure(status) {
   return Object.assign(new Error(errors[status]), { status });
 }
@@ -116,19 +127,21 @@ export async function runConnector(driver = driverPath) {
       killTimer = setTimeout(() => proc.kill('SIGKILL'), 5000).unref();
     }
     worker.terminate = terminate;
-    function fail(status) {
+    function fail(status, reason) {
+      if (worker.finished) return;
       worker.finished = true;
       loginStatus = status;
+      if (status === 'reauth_required') logReauth(reason);
       terminate();
     }
-    if (!restored) loginTimer = setTimeout(() => fail('reauth_required'), 5 * 60 * 1000).unref();
+    if (!restored) loginTimer = setTimeout(() => fail('reauth_required', 'login_timeout'), 5 * 60 * 1000).unref();
     proc.on('error', () => fail('error'));
     proc.on('message', message => {
       pending = pending.then(async () => {
         if (worker.finished) return;
         if (message?.type === 'session-invalid') {
           if (worker.ownsVault) await vault.clear();
-          fail('reauth_required');
+          fail('reauth_required', message.reason);
           return;
         }
         if (message?.type !== 'session-ready' && !(worker.ready && message?.type === 'session-updated')) return;
@@ -187,6 +200,7 @@ export async function runConnector(driver = driverPath) {
       else if (session) {
         await vault.clear();
         loginStatus = 'reauth_required';
+        logReauth('session_expired');
       } else loginStatus = null;
     } catch {
       if (stopping) return;

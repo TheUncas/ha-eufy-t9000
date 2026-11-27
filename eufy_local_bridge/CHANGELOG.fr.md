@@ -2,6 +2,12 @@
 
 [Release notes in English](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.md)
 
+## 1.6.3
+
+- Le module conserve la session chiffrée si une vignette est refusée ou si une réponse eufy est illisible. Lorsqu’un autre service refuse une requête authentifiée, le module vérifie la session auprès du service de compte.
+- Le journal du module indique le motif d’une demande de reconnexion. Si la passerelle est temporairement indisponible, l’assistant Home Assistant permet de réessayer avec la session existante.
+- Mettez à jour et démarrez le module, puis redémarrez Home Assistant Core une fois. Si la version précédente a déjà effacé la session, saisissez une fois vos identifiants eufy. Vous gardez votre clé d’appairage.
+
 ## 1.6.2
 
 - Le module reconnaît davantage de notifications de détection sur la liaison locale avec la HomeBase. Une alerte peut désormais remonter même si elle arrive pendant une commande.

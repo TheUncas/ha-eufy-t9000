@@ -126,6 +126,14 @@
           "fingerprint": "Empreinte SHA-256 du certificat"
         }
       },
+      "check_session": {
+        "title": "Vérifier la session eufy",
+        "description": "Home Assistant n’a pas pu confirmer votre session eufy. Vérifiez que le module T9000 est démarré, puis vérifiez à nouveau la session.",
+        "menu_options": {
+          "check_session": "Vérifier à nouveau la session",
+          "account": "Se connecter à eufy"
+        }
+      },
       "account": {
         "title": "Se connecter à eufy",
         "description": "Ouvrez Home Assistant en HTTPS avant de saisir vos identifiants eufy. Indiquez le pays du compte avec deux lettres, par exemple FR. Après connexion, la passerelle conserve la session eufy chiffrée.",

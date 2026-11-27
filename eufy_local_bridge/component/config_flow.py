@@ -103,6 +103,13 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reauth(self, entry_data):
         self._pairing = self._get_reauth_entry().data
+        return await self.async_step_check_session()
+
+    def _session_unavailable(self, *, app_reachable):
+        actions = ["check_session", "account"] if app_reachable else ["check_session"]
+        return self.async_show_menu(step_id="check_session", menu_options=actions)
+
+    async def async_step_check_session(self, user_input=None):
         try:
             return await self._next_step()
         except PairingError as err:
@@ -110,7 +117,12 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _next_step(self):
         self._submitted = False
-        model = await account_request(self.hass, self._pairing, "status")
+        try:
+            model = await account_request(self.hass, self._pairing, "status")
+        except PairingError as err:
+            if self.context["source"] == config_entries.SOURCE_REAUTH and str(err) == "cannot_connect":
+                return self._session_unavailable(app_reachable=False)
+            raise
         if model["status"] == "starting":
             return await self.async_step_waiting()
         return await self._route_status(model)
@@ -130,6 +142,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_captcha()
         if status == "verify_code":
             return await self.async_step_verify_code()
+        if self.context["source"] == config_entries.SOURCE_REAUTH and status in ("offline", "disconnected", "error"):
+            return self._session_unavailable(app_reachable=True)
         errors = {"base": "eufy_refused"} if status in ("error", "reauth_required") and self._submitted else {}
         return self.async_show_form(step_id="account", data_schema=_ACCOUNT, errors=errors)
 
@@ -158,6 +172,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_login_result(self, user_input=None):
         result = self._poll_task.result()
         self._poll_task = None
+        if self.context["source"] == config_entries.SOURCE_REAUTH and result in ("cannot_connect", "login_timeout"):
+            return self._session_unavailable(app_reachable=result == "login_timeout")
         if result == "login_timeout":
             return self.async_show_form(step_id="account", data_schema=_ACCOUNT, errors={"base": result})
         if isinstance(result, str):
@@ -186,6 +202,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except PairingError as err:
                 if str(err) in ("invalid_token", "invalid_fingerprint"):
                     return self._pairing_form({"base": str(err)})
+                if self.context["source"] == config_entries.SOURCE_REAUTH and str(err) == "cannot_connect":
+                    return self._session_unavailable(app_reachable=False)
                 errors["base"] = str(err)
         return self.async_show_form(step_id=step, data_schema=schema, errors=errors,
                                     description_placeholders=placeholders)

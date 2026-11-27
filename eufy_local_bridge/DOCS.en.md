@@ -148,6 +148,8 @@ Version 1.2.1 fixed the loss of a connection candidate received before transport
 
 The app uses your password to authenticate with eufy. It saves the encrypted session and its key in its private data. The integration stores the pairing key and the public certificate fingerprint. Protect Home Assistant backups that include these data. If eufy expires or revokes the session, sign in again from Home Assistant.
 
+If Home Assistant asks you to sign in again after a few hours, open **Settings → Apps → Eufy Local Bridge T9000 → Log**. From 1.6.3, the app records the reason for the request. Note the time and reason when reporting the issue. If the session has expired or the account service has rejected it, sign in to eufy again. Your pairing key remains valid. If the bridge is temporarily unavailable, choose the retry option in the wizard.
+
 To verify that Home Assistant runs independently, leave the Windows PC off, restart the app, and check that entities update. Batteries show the last readings the cameras reported. Opening a **new T9000 connection** after an internet outage requires eufy signaling. Until internet access returns, the alarm may be unavailable and new readings or images may be missing.
 
 ## Notes for earlier versions

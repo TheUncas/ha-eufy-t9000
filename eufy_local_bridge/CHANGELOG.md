@@ -2,6 +2,12 @@
 
 [Notes de version en français](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.fr.md)
 
+## 1.6.3
+
+- The app keeps the encrypted session when a thumbnail request is denied or a eufy response cannot be decoded. If an authenticated request is denied, the app checks the session with the account service.
+- The app log gives the reason for a sign-in request. When the bridge is temporarily unavailable, Home Assistant offers to retry with the existing session.
+- Update and start the app, then restart Home Assistant Core once. If the previous version already cleared your session, sign in to eufy again using your existing pairing setup.
+
 ## 1.6.2
 
 - The app recognizes more detection notifications over the local HomeBase connection. An alert can now reach Home Assistant even if it arrives while a command is pending.

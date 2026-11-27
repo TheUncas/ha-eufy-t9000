@@ -148,6 +148,8 @@ Le module 1.2.1 corrige la perte d’un candidat de connexion reçu avant l’in
 
 Le mot de passe sert à l’authentification auprès d’eufy. Le module persiste la session chiffrée et sa clé dans ses données privées. L’intégration conserve la clé d’appairage et l’empreinte publique. Protégez les sauvegardes Home Assistant qui contiennent ces données. Une session expirée ou révoquée demande une nouvelle authentification dans Home Assistant.
 
+Si la demande revient après quelques heures, ouvrez **Paramètres → Applications → Eufy Local Bridge T9000 → Journal**. Depuis la 1.6.3, le module y indique le motif de la demande. Notez l’heure et le motif pour le diagnostic. Une expiration ou un refus confirmé du compte demande une nouvelle connexion à eufy. La clé d’appairage reste valable. Si la passerelle est temporairement indisponible, choisissez de réessayer dans l’assistant.
+
 Pour vérifier l’autonomie, laissez le PC Windows éteint, redémarrez le module et contrôlez la mise à jour des entités. Les batteries indiquent les dernières mesures communiquées. Après une coupure Internet, l’établissement d’une **nouvelle liaison T9000** demande la signalisation eufy. Pendant cette coupure, l’alarme peut rester indisponible et de nouvelles mesures ou images peuvent manquer.
 
 ## Notes sur les versions précédentes

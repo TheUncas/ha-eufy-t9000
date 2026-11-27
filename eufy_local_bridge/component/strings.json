@@ -126,6 +126,14 @@
           "fingerprint": "Certificate SHA-256 fingerprint"
         }
       },
+      "check_session": {
+        "title": "Check your eufy session",
+        "description": "Home Assistant could not confirm your eufy session. Check that the T9000 app is running, then check the session again.",
+        "menu_options": {
+          "check_session": "Check session again",
+          "account": "Sign in to eufy"
+        }
+      },
       "account": {
         "title": "Sign in to eufy",
         "description": "Use HTTPS to open Home Assistant before entering your eufy credentials. Enter your account’s two-letter country code, such as FR. Only the encrypted eufy session is kept after sign-in.",

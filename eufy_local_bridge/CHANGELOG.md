@@ -2,6 +2,12 @@
 
 [Notes de version en français](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.fr.md)
 
+## 1.6.0
+
+- **Generate pairing key** now saves the key directly in the app through Home Assistant Supervisor and starts the app when needed. The wizard reuses an existing key. Manual pairing is still available.
+- Each device that advertises motion detection or sends a supported motion state gets a **Mouvement** entity. Its `last_motion_received_at` attribute records when the bridge last received a transition to motion, including brief motion that clears between polls.
+- After the update, start the app and restart Home Assistant Core once to load the integration. Already paired installations keep their key.
+
 ## 1.5.0
 
 - Choose **Generate pairing key** in the integration wizard, then paste the key into the app settings. The wizard can show and fill in the app’s SHA-256 certificate fingerprint for you.

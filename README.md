@@ -13,15 +13,16 @@ Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou
 ## Installation
 
 1. **Installez le module.** Suivez le lien vers la boutique ci-dessus, installez **Eufy Local Bridge T9000** et appuyez sur **Démarrer**. Au premier lancement, laissez **Clé d’appairage** vide. Le module installe l’intégration puis s’arrête. Redémarrez **Home Assistant** une fois pour la charger.
-2. **Créez votre clé.** Ouvrez Home Assistant en HTTPS. Dans **Paramètres → Appareils et services → Ajouter une intégration**, choisissez **Passerelle eufy locale** puis **Générer une clé d’appairage**. Copiez la clé et gardez cette fenêtre ouverte.
-3. **Démarrez la passerelle.** Dans un deuxième onglet, ouvrez **Paramètres → Applications → Eufy Local Bridge T9000 → Configuration**. Collez la clé dans **Clé d’appairage** et enregistrez. Activez **Démarrer au démarrage** puis démarrez le module.
-4. **Connectez votre compte.** Revenez dans l’intégration et validez l’écran de la clé. L’empreinte du module s’affiche. Continuez, laissez le champ de la clé vide pour réutiliser celle que vous venez de créer, puis validez. Connectez-vous à eufy et suivez les étapes de vérification si eufy le demande.
+2. **Appairez le module.** Ouvrez Home Assistant en HTTPS. Dans **Paramètres → Appareils et services → Ajouter une intégration**, choisissez **Passerelle eufy locale** puis **Générer une clé d’appairage**. Home Assistant enregistre la clé dans le module installé et le démarre. Si le module a déjà une clé, il la réutilise.
+3. **Connectez votre compte.** Continuez dans le même assistant lorsque l’empreinte du module apparaît. Connectez-vous à eufy si l’assistant vous le demande. Pour retrouver la passerelle après un redémarrage de la VM, activez **Démarrer au démarrage** sur la fiche du module.
 
 Vous trouverez la **HomeBase T9000** et vos caméras dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**. Ouvrez **Alarme T9000** pour voir l’état confirmé par la base, **Mode de garde T9000** pour choisir un profil ou **Eufy batterie** pour lire la dernière mesure d’une caméra.
 
 Pour ouvrir tous les profils d’un appui sur la tuile **Alarme T9000**, copiez l’exemple de carte du guide. [Configurer la tuile](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#ouvrir-tous-les-modes-depuis-la-tuile-alarme)
 
 ## Caméras et vignettes PoE
+
+L’entité **Mouvement** de chaque appareil compatible indique le dernier état transmis par la HomeBase. Vous la trouverez sur la fiche de la caméra ou, pour un détecteur autonome, sur celle de la HomeBase. L’heure du dernier passage reste consultable même si le mouvement a été bref. [Voir les mouvements détectés](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#voir-les-mouvements-détectés)
 
 Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**, ouvrez la fiche d’une caméra rattachée à la HomeBase. Sélectionnez son entité caméra pour voir le direct. Pour un modèle sur batterie, activez d’abord son entité vidéo si vous souhaitez l’utiliser.
 
@@ -33,7 +34,7 @@ Si la base reste hors ligne, ouvrez la fiche **HomeBase T9000** et appuyez une f
 
 ## Générer la clé
 
-Le bouton **Générer une clé d’appairage** crée une clé privée sur votre installation. Gardez-la dans votre gestionnaire de mots de passe. Elle autorise Home Assistant à lire les appareils et à commander l’alarme. **Afficher l’empreinte SHA-256** présente l’empreinte publique qui permet à Home Assistant de reconnaître la passerelle.
+La clé autorise Home Assistant à lire les appareils et à commander l’alarme. Sur Home Assistant OS, **Générer une clé d’appairage** configure la clé localement. **Afficher l’empreinte SHA-256** présente l’empreinte publique qui permet à Home Assistant de reconnaître la passerelle.
 
 Votre installation est déjà appairée ? Ouvrez **Configurer → Afficher l’empreinte SHA-256** sur l’intégration pour retrouver l’empreinte enregistrée. Gardez votre clé lors des mises à jour. Pour refaire l’appairage, choisissez **Continuer l’appairage** et saisissez cette même clé. [Aide à l’appairage](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#générer-la-clé)
 

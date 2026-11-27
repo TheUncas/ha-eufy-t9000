@@ -2,6 +2,12 @@
 
 [Release notes in English](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.md)
 
+## 1.6.0
+
+- **Générer une clé d’appairage** enregistre la clé directement dans le module via le Supervisor de Home Assistant et démarre le module si nécessaire. L’assistant réutilise une clé existante. La saisie manuelle reste disponible.
+- L’entité **Mouvement** apparaît dès qu’un appareil annonce cette capacité ou transmet un état compatible. Son attribut `last_motion_received_at` donne l’heure de réception du dernier début de mouvement, y compris lorsqu’il s’est terminé entre deux lectures.
+- Après la mise à jour, démarrez le module et redémarrez Home Assistant Core une fois pour charger l’intégration. Les installations déjà appairées gardent leur clé.
+
 ## 1.5.0
 
 - Choisissez **Générer une clé d’appairage** dans l’assistant de l’intégration, puis collez la clé dans les paramètres du module. L’assistant peut afficher et préremplir l’empreinte SHA-256 du certificat du module.

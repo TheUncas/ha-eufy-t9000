@@ -10,6 +10,7 @@ from homeassistant.helpers.selector import TextSelector, TextSelectorConfig, Tex
 from . import DOMAIN, vol
 from .addon_client import PairingError, account_request, normalize_pairing
 from .setup_fingerprint import async_read_setup_fingerprint
+from .supervisor_pairing import async_provision_pairing_key
 
 _PASSWORD = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 _ACCOUNT = vol.Schema({
@@ -27,7 +28,8 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     def __init__(self):
         self._pairing = None
-        self._generated_key = None
+        self._setup_key = None
+        self._provisioned = False
         self._setup_fingerprint = None
         self._captcha = ""
         self._submitted = False
@@ -42,15 +44,27 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_menu(step_id="user", menu_options=["generate_key", "show_fingerprint", "pairing"])
 
     async def async_step_generate_key(self, user_input=None):
+        self._setup_key = await async_provision_pairing_key(self.hass)
+        self._provisioned = self._setup_key is not None
+        if self._provisioned:
+            return await self.async_step_show_fingerprint()
+        return await self.async_step_provision_unavailable()
+
+    async def async_step_provision_unavailable(self, user_input=None):
+        return self.async_show_menu(step_id="provision_unavailable", menu_options=["generate_key", "pairing", "manual_key"])
+
+    async def async_step_manual_key(self, user_input=None):
         if user_input is not None:
             return await self.async_step_show_fingerprint()
-        if self._generated_key is None:
-            self._generated_key = secrets.token_urlsafe(32)
-        return self.async_show_form(step_id="generate_key", data_schema=vol.Schema({}),
-                                   description_placeholders={"key": self._generated_key})
+        if self._setup_key is None:
+            self._setup_key = secrets.token_urlsafe(32)
+        return self.async_show_form(step_id="manual_key", data_schema=vol.Schema({}),
+                                   description_placeholders={"key": self._setup_key})
 
     async def async_step_show_fingerprint(self, user_input=None):
         if user_input is not None:
+            if self._provisioned:
+                return await self.async_step_pairing({"fingerprint": self._setup_fingerprint})
             return await self.async_step_pairing()
         self._setup_fingerprint = await async_read_setup_fingerprint(self.hass)
         if self._setup_fingerprint is None:
@@ -62,7 +76,7 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_menu(step_id="fingerprint_pending", menu_options=["show_fingerprint", "pairing"])
 
     def _pairing_form(self, errors):
-        token = vol.Optional("token") if self._generated_key else vol.Required("token")
+        token = vol.Optional("token") if self._setup_key else vol.Required("token")
         fingerprint = (vol.Required("fingerprint", default=self._setup_fingerprint)
                        if self._setup_fingerprint else vol.Required("fingerprint"))
         return self.async_show_form(step_id="pairing", errors=errors,
@@ -73,7 +87,7 @@ class BridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 self._pairing = normalize_pairing({
-                    **user_input, "token": user_input.get("token") or self._generated_key or "",
+                    **user_input, "token": user_input.get("token") or self._setup_key or "",
                 })
                 return await self._next_step()
             except PairingError as err:

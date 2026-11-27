@@ -1,7 +1,7 @@
 configuration:
   pairing_key:
     name: Clé d’appairage
-    description: À la première installation, collez ici la clé fournie par « Générer une clé d’appairage » dans l’assistant de l’intégration. Conservez votre clé lors des mises à jour.
+    description: Sur Home Assistant OS, « Générer une clé d’appairage » remplit ce champ automatiquement. Pour un appairage manuel, saisissez la même clé dans le module et l’intégration.
   poe_snapshots_enabled:
     name: Actualiser les images des caméras PoE
     description: Récupère périodiquement une image des caméras PoE pour les vignettes dans Home Assistant.

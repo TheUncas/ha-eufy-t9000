@@ -15,11 +15,10 @@ Pour ajouter le dépôt manuellement, ouvrez **Paramètres → Applications → 
 
 ## Générer la clé
 
-1. Dans **Paramètres → Appareils et services → Ajouter une intégration**, choisissez **Passerelle eufy locale**, puis **Générer une clé d’appairage**. Copiez la clé et gardez cette fenêtre ouverte.
-2. Dans un **deuxième onglet**, ouvrez **Paramètres → Applications → Eufy Local Bridge T9000 → Configuration**. Collez la clé dans **Clé d’appairage** et enregistrez. Activez **Démarrer au démarrage** puis démarrez le module.
-3. Revenez au premier onglet et validez l’écran de la clé. Home Assistant affiche l’empreinte SHA-256 du module. Passez au formulaire d’appairage. Laissez le champ de la clé vide pour utiliser celle que vous venez de créer dans cette fenêtre et validez.
+1. Dans **Paramètres → Appareils et services → Ajouter une intégration**, choisissez **Passerelle eufy locale**, puis **Générer une clé d’appairage**. Sur Home Assistant OS, l’assistant enregistre la clé dans le module et le démarre. Si le module possède déjà une clé, l’assistant la réutilise.
+2. Lorsque l’empreinte SHA-256 apparaît, validez pour continuer dans la même fenêtre. Si le module démarre encore, choisissez **Vérifier à nouveau**. Activez **Démarrer au démarrage** sur la fiche du module pour que la passerelle redémarre avec votre VM.
 
-La clé est privée. Conservez-en une copie dans votre gestionnaire de mots de passe, car elle donne accès aux appareils et aux commandes d’alarme. L’empreinte est publique et permet à Home Assistant de reconnaître la passerelle.
+L’empreinte est publique et permet à Home Assistant de reconnaître le module avant de lui envoyer les identifiants. La clé d’appairage reste privée. Si la configuration automatique est indisponible, vérifiez qu’une seule copie du module est installée, puis réessayez. Pour un appairage manuel, utilisez la clé existante ou choisissez **Générer une clé à copier manuellement** si le champ est vide. Dans ce dernier cas, collez-la dans **Configuration → Clé d’appairage** du module, enregistrez et démarrez-le.
 
 ## Connecter eufy depuis Home Assistant
 
@@ -33,6 +32,14 @@ Conservez votre clé à chaque mise à jour. Pour refaire l’appairage, démarr
 Si l’empreinte tarde à apparaître, vérifiez que le module est démarré puis appuyez sur **Vérifier à nouveau**. Vous pouvez aussi choisir **Saisir les informations manuellement** et copier l’empreinte SHA-256 du **Journal** du module. Si la connexion à eufy dépasse 90 secondes, vérifiez le pays du compte et l’accès Internet de Home Assistant avant de réessayer.
 
 ## Caméras et réglages du module
+
+### Voir les mouvements détectés
+
+Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**, ouvrez la caméra concernée. Pour un détecteur de mouvement autonome, ouvrez **HomeBase T9000**. L’entité **Mouvement** porte le nom de l’appareil qui a détecté le passage. Elle indique **Détecté** ou **Aucun mouvement** selon le dernier état reçu. Elle indique **Inconnu** si la base connectée n’a encore transmis aucun état, et **Indisponible** si la liaison est coupée.
+
+Pour une automatisation qui doit aussi réagir aux passages brefs, choisissez un déclencheur **État**, sélectionnez cette entité et son attribut `last_motion_received_at`. Il contient l’heure UTC du dernier début de mouvement reçu par le module, même si le détecteur est déjà revenu au repos à la prochaine lecture. Plusieurs passages entre deux lectures donnent la dernière heure reçue. Le redémarrage du module efface cette valeur en mémoire.
+
+### Régler les caméras
 
 Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**, chaque caméra annoncée par la HomeBase a sa propre fiche. Ouvrez son entité caméra pour démarrer le direct local. Sur un modèle sur batterie, ouvrez au besoin la liste des entités désactivées et activez l’entité vidéo de cette caméra. La HomeBase fournit un seul direct à la fois.
 

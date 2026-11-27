@@ -1,7 +1,7 @@
 configuration:
   pairing_key:
     name: Pairing key
-    description: For a new installation, paste the key from “Generate pairing key” in the integration setup wizard. Keep your current key when updating.
+    description: On Home Assistant OS, “Generate pairing key” fills this field for you. For manual pairing, enter the same key in the app and the integration.
   poe_snapshots_enabled:
     name: Refresh PoE camera images
     description: Periodically fetch an image from PoE cameras for Home Assistant thumbnails.

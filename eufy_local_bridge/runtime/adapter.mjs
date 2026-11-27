@@ -369,6 +369,8 @@ export class EufyAdapter extends EventEmitter {
       }
       else {
         record.entry.live = status.commands.includes('start_livestream');
+        const motion = record.names.motionDetected;
+        if (motion?.type === 'boolean' && motion.readable !== false) record.entry.supportsMotion = true;
         if (['T8P00', 'T8P10', 'T8E00'].includes(properties.model)) record.entry.power = 'poe';
         record.entry.kind = record.entry.power === 'poe' || record.entry.live || 'videoStreamingQuality' in record.names ? 'camera'
           : Object.keys(record.names).some(k => /sensorOpen|motionSensor|sensorChangeTime/i.test(k)) ? 'sensor' : 'other';
@@ -536,8 +538,16 @@ export class EufyAdapter extends EventEmitter {
       if (event.confirmed === true) this.#readConfirmedMode(station, value);
       return;
     }
-    const meta = Object.hasOwn(record.names, name) && record.names[name];
+    let meta = Object.hasOwn(record.names, name) && record.names[name];
+    // The explicit SDK event carries its own Boolean state even on models with incomplete metadata.
+    if (!meta && source === 'device' && action === 'motion detected') meta = { type: 'boolean' };
     if (!meta || meta.readable === false || !safeName(name, meta.type)) return;
+    if (source === 'device' && name === 'motionDetected') {
+      if (meta.type !== 'boolean' || typeof value !== 'boolean') return;
+      entry.supportsMotion = true;
+      // The SDK can forward both the property change and the event for a single detection.
+      if (value && entry.properties.motionDetected !== true) entry.reported.lastMotionReceivedAt = new Date().toISOString();
+    }
     const valid = meta.type === 'object' ? safeObject(value) : typeof value === meta.type && safeValue(value);
     if (!valid) {
       delete entry.properties[name];

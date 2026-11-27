@@ -86,14 +86,23 @@
     "step": {
       "user": {
         "title": "Connect Home Assistant to the T9000 app",
-        "description": "For a first installation, generate a pairing key. If you already saved a key in the app, choose Continue pairing.",
+        "description": "Choose Generate pairing key to save the key in the app and start it automatically. Home Assistant reuses a key already saved there.",
         "menu_options": {
           "generate_key": "Generate pairing key",
           "show_fingerprint": "Show SHA-256 fingerprint",
           "pairing": "Continue pairing"
         }
       },
-      "generate_key": {
+      "provision_unavailable": {
+        "title": "Automatic pairing setup is unavailable",
+        "description": "Check that exactly one Eufy Local Bridge T9000 app is installed and try again. If the app already has a key, you can enter it manually. Only create a manual key if the app’s Pairing key field is empty.",
+        "menu_options": {
+          "generate_key": "Retry automatic setup",
+          "pairing": "Use an existing pairing key",
+          "manual_key": "Generate a key to copy manually"
+        }
+      },
+      "manual_key": {
         "title": "Copy your pairing key",
         "description": "`{key}`\n\nKeep this key private. In another tab, open the T9000 app’s Configuration, paste the key into Pairing key, save and start the app. Return here and submit to see the fingerprint."
       },
@@ -103,7 +112,7 @@
       },
       "fingerprint_pending": {
         "title": "Waiting for the app’s fingerprint",
-        "description": "Save the pairing key in the T9000 app, start it and check again. You can also copy the SHA-256 fingerprint from the app’s Log and enter it manually.",
+        "description": "Wait for the T9000 app to start, then check again. If it stays stopped, start it from its app page. You can also copy the SHA-256 fingerprint from the app’s Log and enter it manually.",
         "menu_options": {
           "show_fingerprint": "Check again",
           "pairing": "Enter pairing details manually"

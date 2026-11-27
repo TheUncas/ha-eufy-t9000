@@ -5,5 +5,5 @@
   "config_flow": true,
   "documentation": "https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md",
   "iot_class": "local_polling",
-  "version": "1.5.0"
+  "version": "1.6.0"
 }

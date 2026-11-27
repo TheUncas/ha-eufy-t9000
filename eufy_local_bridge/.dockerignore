@@ -46,6 +46,7 @@
 !component/sensor.py
 !component/strings.json
 !component/setup_fingerprint.py
+!component/supervisor_pairing.py
 !component/translations/en.json
 !component/translations/fr.json
 !component/udp_diagnostic.py

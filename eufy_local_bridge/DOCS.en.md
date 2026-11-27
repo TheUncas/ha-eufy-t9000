@@ -15,11 +15,10 @@ If you need to add the store manually, open **Settings → Apps → App store �
 
 ## Generate the pairing key
 
-1. Go to **Settings → Devices & services → Add integration** and choose **Passerelle eufy locale**. Press **Generate pairing key**. Copy the key and keep this dialog open.
-2. In a **second tab**, go to **Settings → Apps → Eufy Local Bridge T9000 → Configuration**. Paste the key into **Pairing key** and save. Turn on **Start on boot** and start the app.
-3. Return to the first tab and submit the key screen. Home Assistant displays the app’s SHA-256 fingerprint. Continue to the pairing form. Leave the key field empty to use the key you generated in this dialog and submit.
+1. Go to **Settings → Devices & services → Add integration**, choose **Passerelle eufy locale**, then **Generate pairing key**. On Home Assistant OS the wizard saves the key in the app and starts it. If the app already has a key, the wizard reuses it.
+2. When the SHA-256 fingerprint appears, confirm it to continue in the same dialog. If the app is still starting, choose **Check again**. Turn on **Start on boot** on the app’s page to start the bridge after a VM reboot.
 
-The key is private. Keep a copy in your password manager because it grants access to devices and alarm controls. The fingerprint is public and lets Home Assistant recognize your bridge.
+The fingerprint is public and lets Home Assistant recognize the app before sending credentials. Keep your pairing key private. If automatic setup is unavailable, check that exactly one copy of the app is installed and try again. For manual pairing, use your existing key or choose **Generate a key to copy manually** if the app’s key field is empty. In the latter case, paste the key into the app’s **Configuration → Pairing key**, save and start the app.
 
 ## Connect your eufy account from Home Assistant
 
@@ -33,6 +32,14 @@ Keep the same pairing key on updates. If you need to set up the integration agai
 If the fingerprint is still loading, check that the app is running and select **Check again**. You can also choose **Enter pairing details manually** and copy the SHA-256 fingerprint from the app’s **Log**. If eufy sign-in takes more than 90 seconds, check your account country and Home Assistant’s internet connection before trying again.
 
 ## Cameras and app settings
+
+### See motion detections
+
+Under **Settings → Devices & services → Passerelle eufy locale → Devices**, open the camera that reported motion. For a standalone motion detector, open **HomeBase T9000**. The **Mouvement** entity includes the reporting device’s name. It shows **Detected** or **Clear** based on the most recent report. It shows **Unknown** until the connected base reports a state and **Unavailable** when the connection is down.
+
+For an automation that should also react to brief motion, use a **State** trigger, select the entity and choose its `last_motion_received_at` attribute. It records the UTC time when the bridge last received a transition to motion, even if the detector clears before Home Assistant polls. Multiple detections between polls yield the latest timestamp. Restarting the app clears this in-memory value.
+
+### Configure cameras
 
 Open **Settings → Devices & services → Passerelle eufy locale → Devices**. Each camera reported by the HomeBase has its own device page. Open its camera entity to start a local live view. For a battery-powered camera, show disabled entities and enable its video entity if you want to use it. The HomeBase can stream one camera at a time.
 

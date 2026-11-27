@@ -13,15 +13,16 @@ Connect an **eufy HomeBase T9000** directly to Home Assistant OS on a **64-bit I
 ## Installation
 
 1. **Install the app.** Follow the store link above, install **Eufy Local Bridge T9000** and press **Start**. On the first start, leave **Pairing key** empty. The app installs the integration and stops. Restart **Home Assistant** once to load it.
-2. **Create your key.** Open Home Assistant over HTTPS. Go to **Settings → Devices & services → Add integration**, choose **Passerelle eufy locale**, then **Generate pairing key**. Copy the key and keep this dialog open.
-3. **Start the bridge.** In a second tab, open **Settings → Apps → Eufy Local Bridge T9000 → Configuration**. Paste the key into **Pairing key** and save. Turn on **Start on boot** and start the app.
-4. **Pair and sign in.** Return to the integration and submit the key screen. The app’s fingerprint appears. Continue, leave the key field empty to use the key you just generated, and submit. Sign in to eufy and complete any verification it asks for.
+2. **Pair the app.** Open Home Assistant over HTTPS. Go to **Settings → Devices & services → Add integration**, choose **Passerelle eufy locale**, then **Generate pairing key**. Home Assistant saves the key in the installed app and starts it. If the app already has a key, Home Assistant reuses it.
+3. **Sign in.** Continue in the same wizard when the app’s fingerprint appears. Sign in to eufy if prompted. To start the bridge after a VM reboot, turn on **Start on boot** on the app’s page.
 
 You’ll find **HomeBase T9000** and your cameras under **Settings → Devices & services → Passerelle eufy locale → Devices**. Open **Alarme T9000** for the confirmed alarm state, **Mode de garde T9000** to select a guard profile, or **Eufy batterie** for a camera’s latest battery level.
 
 To open the full list of profiles by tapping the alarm tile, use the dashboard card example in the guide. [Configure the alarm tile](eufy_local_bridge/DOCS.en.md#open-all-guard-modes-from-the-alarm-tile)
 
 ## Cameras and PoE thumbnails
+
+The **Mouvement** entity shows the last motion state the HomeBase reported for each supported device. Open the camera’s device page, or the HomeBase page for a standalone detector. The last detection time remains available even when the movement was brief. [See motion detections](eufy_local_bridge/DOCS.en.md#see-motion-detections)
 
 Open **Settings → Devices & services → Passerelle eufy locale → Devices** and select a camera attached to your HomeBase. Open its camera entity to watch live video. On a battery-powered camera, enable its video entity first if you want to use it.
 
@@ -33,7 +34,7 @@ If the HomeBase stays offline, open its **HomeBase T9000** device page and press
 
 ## Generate a pairing key
 
-**Generate pairing key** creates a private key locally. Keep it in your password manager. It allows Home Assistant to read devices and control the alarm. **Show SHA-256 fingerprint** displays the public fingerprint Home Assistant uses to recognize your bridge.
+The pairing key allows Home Assistant to read devices and control the alarm. On Home Assistant OS, **Generate pairing key** sets it up locally. **Show SHA-256 fingerprint** displays the public fingerprint Home Assistant uses to recognize your bridge.
 
 Already paired? Open **Configure → Show SHA-256 fingerprint** on the integration to see the saved fingerprint. Keep your existing key for updates. If you need to pair again, choose **Continue pairing** and enter that same key. [Pairing help](eufy_local_bridge/DOCS.en.md#generate-the-pairing-key)
 

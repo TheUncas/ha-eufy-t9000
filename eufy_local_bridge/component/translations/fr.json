@@ -86,14 +86,23 @@
     "step": {
       "user": {
         "title": "Relier Home Assistant à l’application T9000",
-        "description": "Pour une première installation, générez une clé d’appairage. Si vous avez déjà enregistré une clé dans l’application, choisissez Continuer l’appairage.",
+        "description": "Choisissez Générer une clé d’appairage pour l’enregistrer dans le module et le démarrer automatiquement. Home Assistant réutilise une clé déjà enregistrée.",
         "menu_options": {
           "generate_key": "Générer une clé d’appairage",
           "show_fingerprint": "Afficher l’empreinte SHA-256",
           "pairing": "Continuer l’appairage"
         }
       },
-      "generate_key": {
+      "provision_unavailable": {
+        "title": "La configuration automatique est indisponible",
+        "description": "Vérifiez qu’un seul module Eufy Local Bridge T9000 est installé, puis réessayez. Si le module a déjà une clé, vous pouvez la saisir manuellement. Créez une clé manuelle uniquement si le champ Clé d’appairage du module est vide.",
+        "menu_options": {
+          "generate_key": "Réessayer la configuration automatique",
+          "pairing": "Utiliser une clé d’appairage existante",
+          "manual_key": "Générer une clé à copier manuellement"
+        }
+      },
+      "manual_key": {
         "title": "Copiez votre clé d’appairage",
         "description": "`{key}`\n\nGardez cette clé privée. Dans un autre onglet, ouvrez la Configuration de l’application T9000, collez la clé dans Clé d’appairage, enregistrez et démarrez l’application. Revenez ici et validez pour voir l’empreinte."
       },
@@ -103,7 +112,7 @@
       },
       "fingerprint_pending": {
         "title": "En attente de l’empreinte de l’application",
-        "description": "Enregistrez la clé d’appairage dans l’application T9000, démarrez-la et vérifiez à nouveau. Vous pouvez aussi copier l’empreinte SHA-256 dans l’onglet Journal de l’application et la saisir manuellement.",
+        "description": "Patientez pendant le démarrage du module T9000, puis vérifiez à nouveau. S’il reste arrêté, démarrez-le depuis sa fiche. Vous pouvez aussi copier l’empreinte SHA-256 depuis l’onglet Journal du module et la saisir manuellement.",
         "menu_options": {
           "show_fingerprint": "Vérifier à nouveau",
           "pairing": "Saisir les informations manuellement"

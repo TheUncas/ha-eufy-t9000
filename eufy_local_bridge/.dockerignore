@@ -1,4 +1,6 @@
 **
+!translations/fr.yaml
+!translations/en.yaml
 !.dockerignore
 !config.yaml
 !icon.png
@@ -24,6 +26,8 @@
 !runtime/private-files.mjs
 !runtime/session-vault.mjs
 !runtime/video.mjs
+!component/brand/icon.png
+!component/brand/icon@2x.png
 !component/__init__.py
 !component/addon_client.py
 !component/alarm_control_panel.py
@@ -33,6 +37,7 @@
 !component/config_flow.py
 !component/guard_mode.py
 !component/manifest.json
+!component/poe_snapshots.py
 !component/select.py
 !component/sensor.py
 !component/strings.json

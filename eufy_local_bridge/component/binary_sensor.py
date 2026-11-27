@@ -3,6 +3,8 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass, Bina
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import camera_device_info
+
 
 REPORTS = {
     "sensorOpen": ("Ouverture", BinarySensorDeviceClass.OPENING),
@@ -38,6 +40,7 @@ class BridgeBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, coordinator, device, field):
         super().__init__(coordinator)
         self._serial = device["id"]
+        self._attr_device_info = camera_device_info(device)
         self._field = field
         label, self._attr_device_class = REPORTS[field]
         self._attr_name = f"{label} {device.get('name') or self._serial}"

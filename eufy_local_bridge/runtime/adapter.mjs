@@ -173,7 +173,7 @@ export class EufyAdapter extends EventEmitter {
   #pending = new Map();
   #stations = new Map();
   #devices = new Map();
-  #streams = new Set();
+  #streams = new Map();
   #updatedAt = null;
   #auth = { status: 'offline' };
   #answering = false;
@@ -277,7 +277,7 @@ export class EufyAdapter extends EventEmitter {
     this.#socket = undefined;
     clearInterval(this.#heartbeat);
     for (const waiter of this.#pending.values()) waiter.reject(bad(503, 'Connexion au connecteur interrompue.'));
-    for (const id of this.#streams) this.#endStream(id);
+    for (const id of this.#streams.keys()) this.#endStream(id);
     this.#stations.clear();
     this.#devices.clear();
     this.#connected = false;
@@ -369,7 +369,7 @@ export class EufyAdapter extends EventEmitter {
       }
       else {
         record.entry.live = status.commands.includes('start_livestream');
-        if (properties.model === 'T8P00') record.entry.power = 'poe';
+        if (['T8P00', 'T8P10', 'T8E00'].includes(properties.model)) record.entry.power = 'poe';
         record.entry.kind = record.entry.power === 'poe' || record.entry.live || 'videoStreamingQuality' in record.names ? 'camera'
           : Object.keys(record.names).some(k => /sensorOpen|motionSensor|sensorChangeTime/i.test(k)) ? 'sensor' : 'other';
       }
@@ -691,9 +691,17 @@ export class EufyAdapter extends EventEmitter {
     signal?.throwIfAborted();
     if (!this.#entry('device', id).live) throw bad(400, 'La caméra ne propose pas de direct.');
     if (this.#streams.has(id)) throw bad(409, 'Ce direct est déjà demandé.');
-    this.#streams.add(id);
+    const owner = Symbol();
+    this.#streams.set(id, owner);
     try { await this.#request('device.start_livestream', { serialNumber: id }); }
-    catch (error) { this.#endStream(id); throw error; }
+    catch (error) {
+      if (this.#streams.get(id) === owner) {
+        // The start may have taken effect even when its acknowledgement was lost.
+        if (error.status === 504) await this.stopLive(id).catch(() => {});
+        else this.#endStream(id);
+      }
+      throw error;
+    }
   }
 
   async stopLive(id) {

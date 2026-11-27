@@ -18,7 +18,15 @@ Connectez une **HomeBase eufy T9000** directement à Home Assistant OS sur PC ou
 
 Pour ouvrir tous les profils d’un appui sur la tuile **Alarme T9000**, copiez l’exemple de carte du guide. [Configurer la tuile](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#ouvrir-tous-les-modes-depuis-la-tuile-alarme)
 
-Si la HomeBase reste hors ligne, ouvrez sa fiche dans Home Assistant et appuyez sur **Tester la liaison UDP**. Le capteur **Diagnostic UDP** affiche le résultat au bout de 90 secondes. [Lire le résultat du test](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#tester-la-liaison-udp-depuis-home-assistant)
+## Caméras et vignettes PoE
+
+Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**, ouvrez la fiche d’une caméra rattachée à la HomeBase. Sélectionnez son entité caméra pour voir le direct. Pour un modèle sur batterie, activez d’abord son entité vidéo si vous souhaitez l’utiliser.
+
+Pour afficher une image sur le tableau de bord entre deux directs, ouvrez **Configuration** dans le module **Eufy Local Bridge T9000**. Activez **Actualiser les images des caméras PoE**, réglez l’intervalle (60 secondes par défaut) et redémarrez le module. Cette option est désactivée à l’installation. Les vignettes affichent la dernière capture en mémoire et le direct a priorité sur leur actualisation. [Caméras et réglages du module](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#caméras-et-réglages-du-module)
+
+## Diagnostic de la liaison
+
+Si la base reste hors ligne, ouvrez la fiche **HomeBase T9000** et appuyez une fois sur **Tester la liaison UDP**. Après 90 secondes, lisez **Diagnostic UDP** et l’attribut `windows_lan_trial`. Le résultat `connected` confirme que la session de test a ouvert le canal de commande. Pour vérifier la connexion habituelle, lisez `homebase_online` sur **Alarme T9000**. [Interpréter le test et diagnostiquer un direct sans image](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md#tester-la-liaison-udp-depuis-home-assistant)
 
 ## Générer la clé
 
@@ -39,7 +47,7 @@ $rng.Dispose()
 - Le module demande accès au dossier de configuration de Home Assistant pour installer et mettre à jour `custom_components/eufy_local_bridge`. Le connecteur eufy s’exécute ensuite sans accès à ce montage. Après une mise à jour, le journal indique si vous devez redémarrer Core.
 - Le mot de passe eufy sert à ouvrir la session. Le module conserve la session chiffrée et sa clé dans ses données privées. Protégez vos sauvegardes Home Assistant.
 - La première installation et l’authentification nécessitent Internet. Après un redémarrage, eufy peut également être nécessaire pour rétablir la liaison avec la base. La VM doit pouvoir joindre la HomeBase sur le réseau local.
-- Une batterie affiche la dernière mesure reçue. Les caméras PoE n’ont pas de pourcentage de batterie. Les entités vidéo sur batterie sont désactivées par défaut pour éviter les réveils automatiques liés aux vignettes.
+- Une batterie affiche la dernière mesure reçue. Une caméra PoE est alimentée par câble. Sur les caméras à batterie, le direct est activable individuellement et les demandes de vignette du tableau de bord ne réveillent pas la caméra.
 
 Les instructions de migration depuis une installation antérieure et le détail des entités figurent dans le guide du module. [Guide complet](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md)
 

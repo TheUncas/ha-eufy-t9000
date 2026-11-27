@@ -3,7 +3,7 @@ import { publicAlarmFailureReason } from '../../adapter.mjs';
 
 export const port = 18787;
 
-export function addonHandler({ token, adapter, login, loginStatus, video, udpDiagnostic }) {
+export function addonHandler({ token, adapter, login, loginStatus, video, udpDiagnostic, statePollSeconds, poeSnapshotIntervalSeconds }) {
   return async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     try {
@@ -16,10 +16,14 @@ export function addonHandler({ token, adapter, login, loginStatus, video, udpDia
           const state = adapter.snapshot();
           const status = await accountStatus(state.auth, loginStatus);
           if (req.url === '/api/eufy/status') return json(res, 200, status);
-          return json(res, 200, { ...state, auth: { status: status.status }, udpDiagnostic: udpDiagnostic?.snapshot() });
+          return json(res, 200, { ...state, auth: { status: status.status }, udpDiagnostic: udpDiagnostic?.snapshot(),
+            statePollSeconds, poeSnapshotIntervalSeconds });
         }
-        const camera = /^\/api\/cameras\/([a-zA-Z0-9_-]{1,128})\/live$/.exec(req.url);
-        if (camera) return video.view(camera[1], res);
+        const camera = /^\/api\/cameras\/([a-zA-Z0-9_-]{1,128})\/live(\?background=1)?$/.exec(req.url);
+        if (camera) {
+          if (camera[2] && !poeSnapshotIntervalSeconds) fail(403, 'Captures périodiques désactivées.');
+          return await video.view(camera[1], res, Boolean(camera[2]));
+        }
       }
       if (req.method === 'POST') {
         if (req.url === '/api/diagnostics/udp' && udpDiagnostic) {

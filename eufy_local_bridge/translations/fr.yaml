@@ -1,0 +1,19 @@
+configuration:
+  pairing_key:
+    name: Clé d’appairage
+    description: Utilisez la même clé dans le module et l’intégration.
+  poe_snapshots_enabled:
+    name: Actualiser les images des caméras PoE
+    description: Récupère périodiquement une image des caméras PoE pour les vignettes dans Home Assistant.
+  poe_snapshot_interval_seconds:
+    name: Intervalle des images PoE (secondes)
+    description: De 30 à 3 600 secondes lorsque l’actualisation des images PoE est activée.
+  state_poll_seconds:
+    name: Intervalle de lecture des états par Home Assistant (secondes)
+    description: De 5 à 120 secondes entre deux lectures du cache local du module.
+  station_poll_seconds:
+    name: Intervalle d’interrogation de la HomeBase (secondes)
+    description: De 15 à 120 secondes entre deux lectures des événements de la base connectée.
+  camera_start_timeout_seconds:
+    name: Délai de démarrage de la vidéo (secondes)
+    description: De 15 à 60 secondes pour recevoir la première image lorsque la base est en ligne.

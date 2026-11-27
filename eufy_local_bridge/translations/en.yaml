@@ -1,0 +1,19 @@
+configuration:
+  pairing_key:
+    name: Pairing key
+    description: Use the same key in the app and the integration.
+  poe_snapshots_enabled:
+    name: Refresh PoE camera images
+    description: Periodically fetch an image from PoE cameras for Home Assistant thumbnails.
+  poe_snapshot_interval_seconds:
+    name: PoE image interval (seconds)
+    description: From 30 to 3600 seconds when PoE image refresh is enabled.
+  state_poll_seconds:
+    name: Home Assistant state refresh interval (seconds)
+    description: From 5 to 120 seconds between reads of the app’s local state cache.
+  station_poll_seconds:
+    name: HomeBase polling interval (seconds)
+    description: From 15 to 120 seconds between event queries to the connected HomeBase.
+  camera_start_timeout_seconds:
+    name: Video startup timeout (seconds)
+    description: From 15 to 60 seconds for the first image while the HomeBase is online.

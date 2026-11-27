@@ -15,6 +15,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers import config_validation as cv, discovery
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .addon_client import ORIGIN
@@ -60,6 +61,15 @@ async def _alarm_error(response):
     if reason == "command_unconfirmed":
         return "La HomeBase n’a pas confirmé la commande. " + _VERIFY_MODE
     return _UNKNOWN_RESULT
+
+
+def camera_device_info(device):
+    serial = device.get("id")
+    if (device.get("kind") != "camera" or not isinstance(serial, str)
+            or not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", serial)):
+        return None
+    return DeviceInfo(identifiers={(DOMAIN, serial)}, name=device.get("name") or serial,
+                      manufacturer="eufy", model=device.get("model") or None)
 
 
 def _local_ip(value):
@@ -108,6 +118,9 @@ class BridgeCoordinator(DataUpdateCoordinator):
             "reauth_required", "captcha", "verify_code"
         ):
             raise ConfigEntryAuthFailed("eufy demande une nouvelle authentification.")
+        if self.config_entry is not None:
+            seconds = state.get("statePollSeconds", 10)
+            self.update_interval = timedelta(seconds=seconds if type(seconds) is int and 5 <= seconds <= 120 else 10)
         return state
 
     async def async_set_mode(self, mode):
@@ -151,11 +164,12 @@ class BridgeCoordinator(DataUpdateCoordinator):
         listener()
         return cancel
 
-    def camera_request(self, serial):
+    def camera_request(self, serial, *, background=False):
         if not re.fullmatch(r"[a-zA-Z0-9_-]{1,128}", serial):
             raise ValueError("Identifiant caméra invalide")
         return self._session.get(
-            f"{self._origin}/api/cameras/{serial}/live", headers=self._headers, ssl=self._tls,
+            f"{self._origin}/api/cameras/{serial}/live" + ("?background=1" if background else ""),
+            headers=self._headers, ssl=self._tls,
             allow_redirects=False, timeout=ClientTimeout(total=None, sock_connect=8, sock_read=80),
         )
 

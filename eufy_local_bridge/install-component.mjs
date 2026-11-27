@@ -39,9 +39,10 @@ async function fingerprint(dir) {
         if (!entry.isFile()) throw conflict();
         if (relative === receipt) continue;
         const path = join(dir, relative);
-        if (!/\.(py|json)$/.test(relative) || (await lstat(path)).size > 1024 * 1024) throw conflict();
-        const text = (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
-        hashes.set(relative, createHash('sha256').update(text).digest());
+        const brandIcon = relative === 'brand/icon.png' || relative === 'brand/icon@2x.png';
+        if ((!brandIcon && !/\.(py|json)$/.test(relative)) || (await lstat(path)).size > 1024 * 1024) throw conflict();
+        const content = brandIcon ? await readFile(path) : (await readFile(path, 'utf8')).replaceAll('\r\n', '\n');
+        hashes.set(relative, createHash('sha256').update(content).digest());
       }
     }
   }

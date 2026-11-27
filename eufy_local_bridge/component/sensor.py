@@ -5,7 +5,7 @@ from homeassistant.const import PERCENTAGE
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN, RTC_CONNECTION_ERRORS
+from . import DOMAIN, RTC_CONNECTION_ERRORS, camera_device_info
 from .guard_mode import watch_homebase
 from .udp_diagnostic import UDP_STATUSES, UdpDiagnosticEntity, ice_attempt, udp_report, window_ice_attempts
 
@@ -24,7 +24,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    entry.async_on_unload(_watch_batteries(entry.runtime_data, async_add_entities))
+    entry.async_on_unload(_watch_batteries(entry.runtime_data, async_add_entities, paired=True))
     entry.async_on_unload(watch_homebase(entry.runtime_data, async_add_entities, UdpLinkResult, supports=udp_report))
 
 
@@ -81,7 +81,7 @@ class UdpLinkResult(UdpDiagnosticEntity, SensorEntity):
 
 
 @callback
-def _watch_batteries(coordinator, async_add_entities):
+def _watch_batteries(coordinator, async_add_entities, *, paired=False):
     known = set()
 
     @callback
@@ -92,7 +92,7 @@ def _watch_batteries(coordinator, async_add_entities):
             if (serial and serial not in known and device.get("kind") == "camera"
                     and device.get("model") and device.get("power") != "poe"):
                 known.add(serial)
-                new.append(CameraBattery(coordinator, serial, device.get("name") or serial))
+                new.append(CameraBattery(coordinator, device, paired))
         if new:
             async_add_entities(new)
 
@@ -106,11 +106,13 @@ class CameraBattery(CoordinatorEntity, SensorEntity):
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator, serial, name):
+    def __init__(self, coordinator, device, paired):
         super().__init__(coordinator)
-        self._serial = serial
-        self._attr_unique_id = f"eufy_bridge_battery_{serial}"
-        self._attr_name = f"Eufy batterie {name}"
+        self._serial = device["id"]
+        self._attr_unique_id = f"eufy_bridge_battery_{self._serial}"
+        self._attr_name = f"Eufy batterie {device.get('name') or self._serial}"
+        if paired:
+            self._attr_device_info = camera_device_info(device)
 
     @property
     def native_value(self):

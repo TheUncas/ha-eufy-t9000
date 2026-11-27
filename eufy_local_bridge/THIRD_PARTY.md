@@ -13,4 +13,4 @@ L’archive `connector-amd64.tar.gz` contient les paquets de fonctionnement de l
 
 ## Icône eufy
 
-Le module utilise le logo eufy du catalogue de marques Home Assistant, redimensionné à 128 × 128 pixels pour la boutique. [Visuel source](https://github.com/home-assistant/brands/blob/master/core_integrations/eufy/icon.png)
+Le module utilise le logo eufy du catalogue de marques Home Assistant. La boutique affiche une version de 128 × 128 pixels. L’intégration fournit les PNG d’origine dans son dossier `brand/` pour que Home Assistant puisse afficher l’icône localement. [Visuels source](https://github.com/home-assistant/brands/tree/master/core_integrations/eufy)

@@ -11,6 +11,24 @@ Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS 
 3. [Générez votre clé d’appairage](#générer-la-clé), puis collez-la dans le champ `pairing_key` de l’onglet **Configuration** du module. Enregistrez, activez **Démarrer au démarrage** puis démarrez le module. Dans son **Journal**, vérifiez le résultat de l’installation de l’intégration et copiez l’empreinte publique SHA-256.
 4. **Redémarrez Home Assistant Core** lorsque le journal le demande. Le module installe les fichiers dans `custom_components/eufy_local_bridge` et indique les mises à jour qui nécessitent un nouveau redémarrage.
 
+## Caméras et réglages du module
+
+Dans **Paramètres → Appareils et services → Passerelle eufy locale → Appareils**, chaque caméra annoncée par la HomeBase a sa propre fiche. Ouvrez son entité caméra pour démarrer le direct local. Sur un modèle sur batterie, ouvrez au besoin la liste des entités désactivées et activez l’entité vidéo de cette caméra. La HomeBase fournit un seul direct à la fois.
+
+Ouvrez **Paramètres → Applications → Eufy Local Bridge T9000 → Configuration** pour modifier les options. Enregistrez puis redémarrez le module.
+
+| Option | Valeur initiale | Effet |
+|---|---|---|
+| **Actualiser les images des caméras PoE** (`poe_snapshots_enabled`) | Désactivé | Capture une image des caméras PoE compatibles à tour de rôle. Le direct à la demande a priorité. |
+| **Intervalle des images PoE** (`poe_snapshot_interval_seconds`) | 60 s | Entre 30 et 3 600 s. Les vignettes lisent la dernière capture gardée en mémoire. Les caméras sur batterie sont exclues. |
+| **Intervalle de lecture des états par Home Assistant** (`state_poll_seconds`) | 10 s | Entre 5 et 120 s. Home Assistant relit les états déjà disponibles dans le module. |
+| **Intervalle d’interrogation de la HomeBase** (`station_poll_seconds`) | 30 s | Entre 15 et 120 s. La passerelle interroge les événements de la base en ligne. Le pourcentage de batterie change quand la caméra communique une mesure. |
+| **Délai de démarrage de la vidéo** (`camera_start_timeout_seconds`) | 30 s | Entre 15 et 60 s pour recevoir la première image lorsque la base est en ligne. |
+
+L’option d’images périodiques couvre toutes les caméras PoE reconnues qui annoncent un direct, y compris si leur entité vidéo est masquée ou désactivée dans HA. Elle s’applique aux modèles E40 (T8P00), E41 (T8P10) et S4 (T8E00). Le module attend l’intervalle choisi après chaque tour de capture. Si un direct occupe la base, les autres vignettes gardent leur dernière image disponible. [Modèles compatibles avec la HomeBase Professional S1](https://service.eufy.com/expertsecure-system/article-description/What-eufy-devices-are-compatible-with-HomeBase-Professional-S1)
+
+Pour une carte de tableau de bord, choisissez **Entité image** (*Picture entity*), sélectionnez la caméra PoE et laissez la **Vue caméra** sur **Auto**. Activez les captures PoE pour obtenir la vignette, puis touchez la carte pour ouvrir le direct. L’image peut être vide jusqu’à la première capture. L’icône eufy de l’intégration est fournie localement depuis ce module sur Home Assistant Core 2026.3 et ultérieur. [Images de marque des intégrations Home Assistant](https://contributors.home-assistant.io/core/integrations/brands/#brand-images-for-custom-integrations)
+
 ### Vérifier la connexion de la HomeBase en 1.3.7
 
 La connexion habituelle du module utilise désormais en priorité la sélection UDP essayée par le bouton de diagnostic. La VM choisit son IPv4 de sortie vers la HomeBase et le premier port UDP annoncé pour l’adresse LAN de celle-ci. Le module recalcule la paire au renouvellement de la session. Si ce chemin échoue, une reconnexion peut reprendre la sélection automatique des candidats du réseau local.
@@ -107,13 +125,22 @@ icon_tap_action:
 
 La tuile affiche l’état actif confirmé par la base. Le sélecteur affiche le dernier profil configuré signalé par eufy. Vous pouvez ainsi voir « Geofencing » dans le sélecteur et « Présent » sur la tuile. En l’absence de confirmation de l’état actif, la tuile peut afficher « Inconnu ».
 
-## Diagnostiquer une commande d’alarme en erreur 503
+## Dépanner la connexion et le direct
 
 ### Tester la liaison UDP depuis Home Assistant
 
-1. Après la mise à jour vers la version **1.3.0**, démarrez le module et redémarrez **Home Assistant Core** pour charger ses nouvelles entités.
+1. Démarrez le module. Après une mise à jour, redémarrez **Home Assistant Core** si le journal du module le demande.
 2. Ouvrez **Paramètres → Appareils et services → Passerelle eufy locale → HomeBase T9000**. Dans **Diagnostic**, appuyez sur **Tester la liaison UDP**. [Ouvrir l’intégration](https://my.home-assistant.io/redirect/integration/?domain=eufy_local_bridge)
-3. Consultez **Diagnostic UDP** sur la même fiche. Le module observe les échanges pendant **90 secondes**. Si la base est hors ligne, il demande une connexion locale au début du test. Le mode de l’alarme reste inchangé.
+3. Après **90 secondes**, ouvrez **Outils de développement → États** et recherchez `sensor.homebase_t9000_diagnostic_udp`. Le test observe le trafic et, lorsque la base est hors ligne, essaie d’ouvrir un canal de commande dans une session dédiée. Il ne nécessite aucune action sur l’alarme.
+
+| Résultat | Vérification suivante |
+|---|---|
+| `windows_lan_trial: connected` | Le canal de test s’est ouvert. Lisez `homebase_online` sur `alarm_control_panel.alarme_t9000` pour connaître l’état de la session habituelle. |
+| `windows_lan_trial: skipped_online` | La session habituelle était disponible. Pour vérifier la vidéo, ouvrez séparément le direct d’une caméra PoE. |
+| `bidirectional` avec `windows_lan_trial: failed` | Du trafic a circulé dans les deux sens. Consultez `windows_lan_trial_reason` et, si présent, `windows_lan_ice_attempt` pour situer l’échec de connexion. |
+| `outbound_only`, `inbound_only` ou `no_traffic` | Contrôlez l’interface dans `sent_by_interface` et `received_by_interface`, le réseau en pont de la VM et le réseau local de la HomeBase. |
+
+**Base en ligne, image absente.** Ouvrez la fiche d’une caméra PoE compatible et son direct, puis attendez le délai de démarrage configuré. Si le direct s’affiche, vérifiez **Actualiser les images des caméras PoE**, l’intervalle et l’entité sélectionnée sur la carte. Fermez le direct pour laisser les autres caméras PoE actualiser leurs images. Une vignette vide sur une caméra sur batterie est attendue. Pour un signalement, indiquez la version, le résultat du bouton UDP, `homebase_online` et si le direct ou seulement la vignette manque.
 
 Le capteur indique si des paquets circulent dans les deux sens, en sortie seulement, en entrée seulement, ou si aucun trafic n’a été observé. Ses attributs donnent les compteurs par interface et les heures du test. En cas d’échec, consultez l’attribut **Motif**. Un échange dans les deux sens confirme la circulation de paquets avec la base. L’attribut `homebase_online` de l’alarme indique si la liaison eufy a effectivement abouti.
 

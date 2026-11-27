@@ -3,7 +3,7 @@
   "name": "Passerelle eufy locale",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://www.home-assistant.io/docs/configuration/",
+  "documentation": "https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.md",
   "iot_class": "local_polling",
-  "version": "1.3.7"
+  "version": "1.4.0"
 }

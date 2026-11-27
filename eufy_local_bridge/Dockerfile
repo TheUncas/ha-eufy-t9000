@@ -21,7 +21,7 @@ COPY rtc-connect.cjs ./node_modules/eufy-security-client/build/rtc/bridge-ha-rtc
 COPY rtc-observe.cjs ./node_modules/eufy-security-client/build/rtc/bridge-ha-rtc-observe.cjs
 COPY rtc-lan-trial.cjs rtc-trial-runner.cjs ./node_modules/eufy-security-client/build/rtc/
 COPY patch-rtc.cjs /tmp/patch-rtc.cjs
-COPY THIRD_PARTY.md /usr/share/doc/eufy-local-bridge/THIRD_PARTY.md
+COPY THIRD_PARTY.md THIRD_PARTY.en.md /usr/share/doc/eufy-local-bridge/
 RUN node /tmp/patch-rtc.cjs && rm /tmp/patch-rtc.cjs \
     && node -e "require('node-datachannel'); require('./node_modules/eufy-security-client/build/rtc/stationRtcTransport')" \
     && test -f node_modules/eufy-security-ws/dist/bin/server.js

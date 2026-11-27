@@ -1,5 +1,7 @@
 # Installer Eufy Local Bridge dans Home Assistant OS
 
+[English guide](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/DOCS.en.md) · [Journal des versions](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/CHANGELOG.fr.md) · [Dépendances et licences](https://github.com/TheUncas/ha-eufy-t9000/blob/main/eufy_local_bridge/THIRD_PARTY.md)
+
 <a href="https://buymeacoffee.com/theuncas"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" width="180" alt="M’offrir un café sur Buy Me a Coffee"></a>
 
 Le module se connecte à votre compte eufy et au T9000 depuis Home Assistant OS sur **PC ou VM Intel/AMD 64 bits**. L’intégration fournit les entités aux tableaux de bord et aux automatisations. Le PC qui héberge le site Windows peut être éteint. La VM doit pouvoir joindre la HomeBase sur le réseau local. Sous VMware, utilisez une carte réseau en mode pont sur ce réseau.

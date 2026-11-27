@@ -1,5 +1,7 @@
 # Dépendances du connecteur amd64
 
+[English version](THIRD_PARTY.en.md)
+
 L’archive `connector-amd64.tar.gz` contient les paquets de fonctionnement de l’image du connecteur, y compris les mentions de licence livrées dans les paquets npm. Les dépendances sont installées dans `/usr/src/app/node_modules`. L’image vérifie l’empreinte SHA-256 de l’archive avant extraction.
 
 | Composant | Source de la version distribuée | Mentions incluses |

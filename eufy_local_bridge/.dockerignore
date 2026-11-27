@@ -4,9 +4,13 @@
 !.dockerignore
 !config.yaml
 !icon.png
-!DOCS.md
-!THIRD_PARTY.md
 !Dockerfile
+!DOCS.md
+!DOCS.en.md
+!CHANGELOG.md
+!CHANGELOG.fr.md
+!THIRD_PARTY.md
+!THIRD_PARTY.en.md
 !api.mjs
 !run.mjs
 !install-component.mjs
